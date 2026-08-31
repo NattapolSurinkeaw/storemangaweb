@@ -1,0 +1,9 @@
+RewriteEngine On
+
+# ถ้า request ตรงกับไฟล์/โฟลเดอร์จริง ให้ใช้ไฟล์นั้นเลย (เช่น css/js)
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# มิฉะนั้นส่งทุก request เข้า index.php?url=...
+RewriteRule ^(.*)$ index.php?url=$1 [QSA,L]

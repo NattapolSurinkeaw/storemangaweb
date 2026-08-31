@@ -1,0 +1,92 @@
+<?php
+$__url = isset($_GET['url']) ? trim($_GET['url'], '/') : 'dashboard';
+$__seg = $__url === '' ? 'dashboard' : explode('/', $__url)[0];
+$__full = $__url === '' ? 'dashboard' : $__url;
+
+$__navItems = [
+    ['url' => 'dashboard',        'icon' => 'bi-speedometer2', 'label' => 'Dashboard',      'short' => 'หน้าแรก',  'match' => 'dashboard'],
+    ['url' => 'purchase/create',  'icon' => 'bi-bag-plus',     'label' => 'บันทึกซื้อเข้า',  'short' => 'ซื้อเข้า', 'match' => 'purchase'],
+    ['url' => 'stock',            'icon' => 'bi-boxes',        'label' => 'สต็อก',           'short' => 'สต็อก',    'match' => 'stock', 'exact' => 'stock'],
+    ['url' => 'stock/bundle',     'icon' => 'bi-collection',   'label' => 'จัดชุดขาย',       'short' => 'จัดชุด',   'match' => 'stock/bundle', 'exact' => 'stock/bundle'],
+    ['url' => 'sales/create',     'icon' => 'bi-cash-coin',    'label' => 'บันทึกขาย',       'short' => 'ขาย',      'match' => 'sales'],
+];
+
+function __manga_is_active($item, $seg, $full) {
+    if (isset($item['exact'])) return $full === $item['exact'];
+    return $seg === $item['match'];
+}
+?>
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title><?= APP_NAME ?></title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+Thai:wght@600;700&family=Noto+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<link rel="stylesheet" href="<?= BASE_URL ?>/css/app.css">
+</head>
+<body class="app-shell">
+
+<!-- Desktop sidebar -->
+<aside class="sidebar d-none d-lg-flex flex-column">
+    <a class="sidebar-brand" href="<?= BASE_URL ?>/index.php?url=dashboard">
+        <span class="seal">漫</span>
+        <span class="brand-text"><?= htmlspecialchars(APP_NAME) ?><small>ระบบจัดการสต็อกมังงะ</small></span>
+    </a>
+    <nav class="sidebar-nav">
+        <?php foreach ($__navItems as $item): ?>
+            <a class="nav-link <?= __manga_is_active($item, $__seg, $__full) ? 'active' : '' ?>"
+               href="<?= BASE_URL ?>/index.php?url=<?= $item['url'] ?>">
+                <i class="bi <?= $item['icon'] ?>"></i> <?= $item['label'] ?>
+            </a>
+        <?php endforeach; ?>
+    </nav>
+    <div class="sidebar-foot">&copy; <?= date('Y') ?> <?= htmlspecialchars(APP_NAME) ?></div>
+</aside>
+
+<!-- Mobile offcanvas nav -->
+<div class="offcanvas offcanvas-start mobile-nav" tabindex="-1" id="mobileNav">
+    <div class="offcanvas-header">
+        <span class="brand-text" style="font-family:var(--font-display);font-weight:700;color:#fff;">
+            <span class="seal" style="display:inline-flex;">漫</span> <?= htmlspecialchars(APP_NAME) ?>
+        </span>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+    </div>
+    <div class="offcanvas-body p-0">
+        <nav class="sidebar-nav">
+            <?php foreach ($__navItems as $item): ?>
+                <a class="nav-link <?= __manga_is_active($item, $__seg, $__full) ? 'active' : '' ?>"
+                   href="<?= BASE_URL ?>/index.php?url=<?= $item['url'] ?>">
+                    <i class="bi <?= $item['icon'] ?>"></i> <?= $item['label'] ?>
+                </a>
+            <?php endforeach; ?>
+        </nav>
+    </div>
+</div>
+
+<div class="app-main">
+    <!-- Mobile topbar -->
+    <header class="topbar d-lg-none">
+        <button class="menu-btn" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileNav" aria-label="เมนู">
+            <i class="bi bi-list" style="font-size:1.3rem;"></i>
+        </button>
+        <a class="brand-text" href="<?= BASE_URL ?>/index.php?url=dashboard">
+            <span class="seal">漫</span> <?= htmlspecialchars(APP_NAME) ?>
+        </a>
+        <span style="width:38px;"></span>
+    </header>
+
+    <div class="content-area">
+        <?php if (!empty($_SESSION['flash'])): ?>
+            <?php foreach ($_SESSION['flash'] as $flash): ?>
+                <div class="alert alert-<?= htmlspecialchars($flash['type']) ?> alert-dismissible fade show" role="alert">
+                    <?= htmlspecialchars($flash['message']) ?>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            <?php endforeach; ?>
+            <?php unset($_SESSION['flash']); ?>
+        <?php endif; ?>
