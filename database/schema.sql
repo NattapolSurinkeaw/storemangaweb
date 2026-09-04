@@ -7,6 +7,23 @@ CREATE DATABASE IF NOT EXISTS manga_stock CHARACTER SET utf8mb4 COLLATE utf8mb4_
 USE manga_stock;
 
 -- ---------------------------------------------------------
+-- 0. users : ผู้ใช้งานระบบ (admin / user)
+--    - admin : ใช้งานได้ทุกฟีเจอร์ (เพิ่ม/แก้ไข/ลบ)
+--    - user  : ดูข้อมูลได้อย่างเดียว (read-only)
+-- ---------------------------------------------------------
+CREATE TABLE users (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    display_name VARCHAR(100) NOT NULL,
+    role ENUM('admin','user') NOT NULL DEFAULT 'user',
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    last_login_at DATETIME DEFAULT NULL,
+    INDEX idx_users_role (role)
+) ENGINE=InnoDB;
+
+-- ---------------------------------------------------------
 -- 1. purchases : บิลซื้อเข้า 1 บิล อาจมีหลายรายการ (purchase_items)
 -- ---------------------------------------------------------
 CREATE TABLE purchases (

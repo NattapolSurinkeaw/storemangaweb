@@ -185,6 +185,94 @@ a:hover{ color: var(--color-burgundy); }
   border-top: 1px solid rgba(255,255,255,.08);
 }
 
+/* ============================== Sidebar user / role badge ================= */
+.sidebar-user{
+  display: flex; align-items: center; gap: .65rem;
+  padding: .7rem .9rem;
+  margin: 0 .5rem .5rem;
+  border-radius: 10px;
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.06);
+  position: absolute;
+  bottom: 2.2rem; left: 0; right: 0;
+}
+.sidebar-user .user-avatar{
+  width: 36px; height: 36px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--color-gold) 0%, #b48a2f 100%);
+  color: var(--color-ink);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1rem;
+  flex: 0 0 36px;
+}
+.sidebar-user .user-info{ flex: 1; min-width: 0; line-height: 1.15; }
+.sidebar-user .user-name{
+  color: #f4ead0;
+  font-weight: 600;
+  font-size: .85rem;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sidebar-user .user-role{ margin-top: .15rem; }
+.sidebar-user .btn-icon{
+  width: 32px; height: 32px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 8px;
+  color: rgba(244,234,208,.7);
+  text-decoration: none;
+  border: 1px solid rgba(255,255,255,.08);
+  transition: all .15s;
+}
+.sidebar-user .btn-icon:hover{
+  color: #fff;
+  background: rgba(139,30,30,.6);
+  border-color: rgba(255,255,255,.18);
+}
+
+.role-badge{
+  display: inline-block;
+  font-size: .68rem;
+  font-weight: 600;
+  padding: .15rem .5rem;
+  border-radius: 999px;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+}
+.role-badge.role-admin{
+  background: rgba(196, 154, 64, .18);
+  color: var(--color-gold);
+  border: 1px solid rgba(196, 154, 64, .35);
+}
+.role-badge.role-user{
+  background: rgba(180, 200, 220, .15);
+  color: #b8d4e8;
+  border: 1px solid rgba(180, 200, 220, .3);
+}
+
+.mobile-user-bar{
+  padding: 1rem;
+  margin-top: auto;
+  border-top: 1px solid rgba(255,255,255,.08);
+  display: flex; align-items: center; gap: .75rem;
+  background: rgba(0,0,0,.2);
+}
+.offcanvas-body{ display: flex; flex-direction: column; }
+.mobile-user-bar .user-info{ flex: 1; min-width: 0; }
+.mobile-user-bar .user-name{
+  color: #f4ead0; font-weight: 600; font-size: .9rem;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.topbar-user{
+  color: #fff; text-decoration: none;
+  display: flex; align-items: center; gap: .4rem;
+  font-size: .85rem;
+  padding: .25rem .5rem;
+  border-radius: 6px;
+}
+.topbar-user:hover{ color: var(--color-gold); background: rgba(255,255,255,.06); }
+.topbar-user .role-badge{ font-size: .6rem; }
+
 /* ============================== Topbar (mobile) =========================== */
 
 .topbar{

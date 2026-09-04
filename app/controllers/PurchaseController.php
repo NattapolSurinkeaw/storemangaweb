@@ -81,6 +81,7 @@ class PurchaseController extends Controller
      */
     public function delete(int $id): void
     {
+        $this->requireAdmin();
         header('Content-Type: application/json; charset=utf-8');
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             http_response_code(405);

@@ -3,13 +3,27 @@ $__url = isset($_GET['url']) ? trim($_GET['url'], '/') : 'dashboard';
 $__seg = $__url === '' ? 'dashboard' : explode('/', $__url)[0];
 $__full = $__url === '' ? 'dashboard' : $__url;
 
+$__user = $_SESSION['user_id'] ?? null;
+$__userModel = new UserModel();
+$__currentUser = $__user ? $__userModel->findById((int) $__user) : null;
+$__isAdmin = $__currentUser && ($__currentUser['role'] ?? '') === 'admin';
+
+// ซ่อนเมนูที่เป็นการ "สร้าง/จัดการ" สำหรับ user (read-only)
+// - บันทึกซื้อเข้า (purchase/create) - มีฟอร์มบันทึก
+// - จัดชุดขาย (stock/bundle) - มีฟอร์มสร้าง bundle
+// user ยังสามารถดู purchase list (ผ่านหน้า create) และ stock list ได้
 $__navItems = [
     ['url' => 'dashboard',        'icon' => 'bi-speedometer2', 'label' => 'Dashboard',      'short' => 'หน้าแรก',  'match' => 'dashboard'],
-    ['url' => 'purchase/create',  'icon' => 'bi-bag-plus',     'label' => 'บันทึกซื้อเข้า',  'short' => 'ซื้อเข้า', 'match' => 'purchase'],
+    ['url' => 'purchase/create',  'icon' => 'bi-bag-plus',     'label' => 'บันทึกซื้อเข้า',  'short' => 'ซื้อเข้า', 'match' => 'purchase', 'admin' => true],
     ['url' => 'stock',            'icon' => 'bi-boxes',        'label' => 'สต็อก',           'short' => 'สต็อก',    'match' => 'stock', 'exact' => 'stock'],
-    ['url' => 'stock/bundle',     'icon' => 'bi-collection',   'label' => 'จัดชุดขาย',       'short' => 'จัดชุด',   'match' => 'stock/bundle', 'exact' => 'stock/bundle'],
+    ['url' => 'stock/bundle',     'icon' => 'bi-collection',   'label' => 'จัดชุดขาย',       'short' => 'จัดชุด',   'match' => 'stock/bundle', 'exact' => 'stock/bundle', 'admin' => true],
     ['url' => 'sales/create',     'icon' => 'bi-cash-coin',    'label' => 'บันทึกขาย',       'short' => 'ขาย',      'match' => 'sales'],
 ];
+
+$__navItems = array_values(array_filter($__navItems, function ($it) use ($__isAdmin) {
+    if (!empty($it['admin']) && !$__isAdmin) return false;
+    return true;
+}));
 
 function __manga_is_active($item, $seg, $full) {
     if (isset($item['exact'])) return $full === $item['exact'];
@@ -45,6 +59,24 @@ function __manga_is_active($item, $seg, $full) {
             </a>
         <?php endforeach; ?>
     </nav>
+
+    <?php if ($__currentUser): ?>
+    <div class="sidebar-user">
+        <div class="user-avatar"><?= mb_strtoupper(mb_substr($__currentUser['display_name'] ?? 'U', 0, 1, 'UTF-8')) ?></div>
+        <div class="user-info">
+            <div class="user-name"><?= htmlspecialchars($__currentUser['display_name']) ?></div>
+            <div class="user-role">
+                <span class="role-badge role-<?= htmlspecialchars($__currentUser['role']) ?>">
+                    <?= $__currentUser['role'] === 'admin' ? 'Admin' : 'ผู้ใช้ทั่วไป' ?>
+                </span>
+            </div>
+        </div>
+        <a class="btn-icon" href="<?= BASE_URL ?>/index.php?url=login/logout" title="ออกจากระบบ" aria-label="ออกจากระบบ">
+            <i class="bi bi-box-arrow-right"></i>
+        </a>
+    </div>
+    <?php endif; ?>
+
     <div class="sidebar-foot">&copy; <?= date('Y') ?> <?= htmlspecialchars(APP_NAME) ?></div>
 </aside>
 
@@ -65,6 +97,22 @@ function __manga_is_active($item, $seg, $full) {
                 </a>
             <?php endforeach; ?>
         </nav>
+
+        <?php if ($__currentUser): ?>
+        <div class="mobile-user-bar">
+            <div class="user-info">
+                <div class="user-name"><?= htmlspecialchars($__currentUser['display_name']) ?></div>
+                <div class="user-role">
+                    <span class="role-badge role-<?= htmlspecialchars($__currentUser['role']) ?>">
+                        <?= $__currentUser['role'] === 'admin' ? 'Admin' : 'ผู้ใช้ทั่วไป' ?>
+                    </span>
+                </div>
+            </div>
+            <a class="btn btn-sm btn-outline-light" href="<?= BASE_URL ?>/index.php?url=login/logout">
+                <i class="bi bi-box-arrow-right"></i> ออกจากระบบ
+            </a>
+        </div>
+        <?php endif; ?>
     </div>
 </div>
 
@@ -77,7 +125,16 @@ function __manga_is_active($item, $seg, $full) {
         <a class="brand-text" href="<?= BASE_URL ?>/index.php?url=dashboard">
             <span class="seal">漫</span> <?= htmlspecialchars(APP_NAME) ?>
         </a>
-        <span style="width:38px;"></span>
+        <?php if ($__currentUser): ?>
+            <a class="topbar-user" href="<?= BASE_URL ?>/index.php?url=login/logout" title="ออกจากระบบ">
+                <span class="role-badge role-<?= htmlspecialchars($__currentUser['role']) ?>">
+                    <?= htmlspecialchars($__currentUser['role']) ?>
+                </span>
+                <i class="bi bi-box-arrow-right"></i>
+            </a>
+        <?php else: ?>
+            <span style="width:38px;"></span>
+        <?php endif; ?>
     </header>
 
     <div class="content-area">

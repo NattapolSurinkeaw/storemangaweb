@@ -1,8 +1,9 @@
 <div class="page-title">
     <i class="bi bi-bag-plus"></i>
-    <h3>บันทึกบิลซื้อเข้า</h3>
+    <h3>บันทึกบิลซื้อเข้า <?php if (!$__isAdmin): ?><span class="badge bg-secondary ms-2">ดูอย่างเดียว</span><?php endif; ?></h3>
 </div>
 
+<?php if ($__isAdmin): ?>
 <div class="card p-4 mb-4">
     <form method="POST" action="<?= BASE_URL ?>/index.php?url=purchase/create" id="purchaseForm" enctype="multipart/form-data">
         <div class="row g-3 mb-3">
@@ -45,6 +46,12 @@
         <button type="submit" class="btn btn-primary"><i class="bi bi-save"></i> บันทึกบิลซื้อ</button>
     </form>
 </div>
+<?php else: ?>
+<div class="alert alert-info d-flex align-items-center mb-4">
+    <i class="bi bi-info-circle me-2 fs-4"></i>
+    <div>บัญชีของคุณอยู่ในสิทธิ์ <strong>ผู้ใช้ทั่วไป</strong> สามารถดูข้อมูลบิลซื้อได้อย่างเดียว ไม่สามารถเพิ่ม/ลบบิลซื้อได้</div>
+</div>
+<?php endif; ?>
 
 <div class="card p-4">
     <div class="panel-title"><i class="bi bi-clock-history"></i> ประวัติบิลซื้อเข้า</div>
@@ -81,12 +88,14 @@
                                 data-id="<?= (int)$p['id'] ?>">
                             <i class="bi bi-eye"></i> ดูรายละเอียด
                         </button>
+                        <?php if ($__isAdmin): ?>
                         <button type="button" class="btn btn-sm btn-outline-danger delete-purchase-btn"
                                 data-id="<?= (int)$p['id'] ?>"
                                 data-code="<?= htmlspecialchars($p['purchase_code']) ?>"
                                 data-books="<?= (int)$p['book_count'] ?>">
                             <i class="bi bi-trash"></i> ลบบิล
                         </button>
+                        <?php endif; ?>
                     </td>
                 </tr>
             <?php endforeach; ?>

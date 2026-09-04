@@ -32,6 +32,7 @@ class StockController extends Controller
 
     public function bundle(): void
     {
+        $this->requireAdmin();
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $action = $_POST['action'] ?? 'create';
             if ($action === 'combine') {
@@ -168,6 +169,7 @@ private function combineBundles(): void
 
     public function dissolveBundle(int $id = 0): void
     {
+        $this->requireAdmin();
         try {
             $this->bundleModel->dissolveBundle($id);
             $this->flash('success', "ยกเลิกชุด #{$id} และคืนเล่มเข้าสต็อกแล้ว");
@@ -180,6 +182,7 @@ private function combineBundles(): void
 
     public function dissolveBundleGroup(int $id = 0): void
     {
+        $this->requireAdmin();
         try {
             $this->bundleModel->dissolveBundleGroup($id);
             $this->flash('success', "ยกเลิกกลุ่มขาย #{$id} และคืนเล่มเข้าสต็อกแล้ว");

@@ -1,8 +1,9 @@
 <div class="page-title">
     <i class="bi bi-cash-coin"></i>
-    <h3>บันทึกการขาย</h3>
+    <h3>บันทึกการขาย <?php if (!$__isAdmin): ?><span class="badge bg-secondary ms-2">ดูอย่างเดียว</span><?php endif; ?></h3>
 </div>
 
+<?php if ($__isAdmin): ?>
 <div class="card p-4 mb-4">
     <form method="POST" action="<?= BASE_URL ?>/index.php?url=sales/create" id="saleForm">
         <div class="row g-3 mb-3">
@@ -77,6 +78,12 @@
         <button type="submit" class="btn btn-primary"><i class="bi bi-save"></i> บันทึกการขาย</button>
     </form>
 </div>
+<?php else: ?>
+<div class="alert alert-info d-flex align-items-center mb-4">
+    <i class="bi bi-info-circle me-2 fs-4"></i>
+    <div>บัญชีของคุณอยู่ในสิทธิ์ <strong>ผู้ใช้ทั่วไป</strong> สามารถดูประวัติการขายได้อย่างเดียว ไม่สามารถบันทึกการขายใหม่ได้</div>
+</div>
+<?php endif; ?>
 
 <div class="card p-4">
     <div class="panel-title"><i class="bi bi-receipt"></i> รายการขายล่าสุด</div>
