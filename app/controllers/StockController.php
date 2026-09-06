@@ -14,6 +14,7 @@ class StockController extends Controller
 
     public function __construct()
     {
+        parent::__construct();
         $this->inventoryModel = new InventoryModel();
         $this->bundleModel    = new BundleModel();
     }

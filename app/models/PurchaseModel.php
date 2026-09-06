@@ -38,7 +38,149 @@ class PurchaseModel extends Model
             throw new InvalidArgumentException('ต้องมีอย่างน้อย 1 รายการในบิล');
         }
 
-        // Validation + รวมจำนวนเล่มทั้งบิล + คำนวณ item_qty ของแต่ละเรื่อง
+        $validated = $this->validateAndCompute($header, $items);
+
+        $this->db->beginTransaction();
+
+        try {
+            $purchaseCode = 'PO-' . date('Ymd-His');
+
+            $stmt = $this->db->prepare(
+                "INSERT INTO purchases (purchase_code, purchase_date, total_shipping_cost, total_book_count, note)
+                 VALUES (:code, :pdate, :ship, :count, :note)"
+            );
+            $stmt->execute([
+                ':code'  => $purchaseCode,
+                ':pdate' => $validated['header']['purchase_date'],
+                ':ship'  => $validated['header']['total_shipping_cost'],
+                ':count' => $validated['totalBookCount'],
+                ':note'  => $validated['header']['note'] ?? null,
+            ]);
+            $purchaseId = (int) $this->db->lastInsertId();
+
+            $this->insertItemsAndBooks($purchaseId, $validated['items'], $validated['header'], $validated['shippingPerBook']);
+
+            $this->db->commit();
+            return $purchaseId;
+        } catch (Throwable $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
+    }
+
+    /**
+     * แก้ไขบิลซื้อ: ลบ items/volumes/available books เดิม แล้วใส่ใหม่ตามข้อมูลที่ส่งมา
+     * - ห้ามแก้ถ้ามีหนังสือถูกขายแล้ว / อยู่ในชุดขาย (เพื่อรักษาประวัติ)
+     * - คง purchase_id, purchase_code, รูปสลิปไว้
+     *
+     * @return array{updated: array{items:int, volumes:int, books:int}}
+     */
+    public function replacePurchaseItems(int $purchaseId, array $header, array $items): array
+    {
+        if (empty($items)) {
+            throw new InvalidArgumentException('ต้องมีอย่างน้อย 1 รายการในบิล');
+        }
+
+        $validated = $this->validateAndCompute($header, $items);
+
+        $this->db->beginTransaction();
+        try {
+            // 1) ตรวจว่ามีบิลนี้อยู่จริง + ล็อกแถว
+            $chk = $this->db->prepare("SELECT id FROM purchases WHERE id = :id FOR UPDATE");
+            $chk->execute([':id' => $purchaseId]);
+            if (!$chk->fetch()) {
+                throw new RuntimeException('ไม่พบบิลซื้อนี้');
+            }
+
+            // 2) safety check: ห้ามแก้ถ้ามีหนังสือถูกขาย/อยู่ในชุด
+            $cntStmt = $this->db->prepare(
+                "SELECT SUM(CASE WHEN ib.status = 'sold'     THEN 1 ELSE 0 END) AS sold_count,
+                        SUM(CASE WHEN ib.status = 'in_bundle' THEN 1 ELSE 0 END) AS bundled_count
+                 FROM inventory_books ib
+                 JOIN purchase_item_volumes piv ON piv.id = ib.purchase_item_volume_id
+                 JOIN purchase_items pi ON pi.id = piv.purchase_item_id
+                 WHERE pi.purchase_id = :pid"
+            );
+            $cntStmt->execute([':pid' => $purchaseId]);
+            $counts = $cntStmt->fetch();
+            $sold    = (int) ($counts['sold_count'] ?? 0);
+            $bundled = (int) ($counts['bundled_count'] ?? 0);
+            if ($sold > 0) {
+                throw new RuntimeException(
+                    "ไม่สามารถแก้ไขบิลนี้ได้ เนื่องจากมีหนังสือ {$sold} เล่มถูกขายไปแล้ว"
+                );
+            }
+            if ($bundled > 0) {
+                throw new RuntimeException(
+                    "ไม่สามารถแก้ไขบิลนี้ได้ เนื่องจากมีหนังสือ {$bundled} เล่มอยู่ในชุดขาย (in_bundle)"
+                );
+            }
+
+            // 3) นับจำนวนก่อนลบ (เพื่อรายงาน)
+            $oldVolStmt = $this->db->prepare(
+                "SELECT COUNT(*) FROM purchase_item_volumes piv
+                   JOIN purchase_items pi ON pi.id = piv.purchase_item_id
+                  WHERE pi.purchase_id = :pid"
+            );
+            $oldVolStmt->execute([':pid' => $purchaseId]);
+            $oldVolumeCount = (int) $oldVolStmt->fetchColumn();
+
+            $oldBookStmt = $this->db->prepare(
+                "SELECT COUNT(*) FROM inventory_books ib
+                   JOIN purchase_item_volumes piv ON piv.id = ib.purchase_item_volume_id
+                   JOIN purchase_items pi ON pi.id = piv.purchase_item_id
+                  WHERE pi.purchase_id = :pid"
+            );
+            $oldBookStmt->execute([':pid' => $purchaseId]);
+            $oldBookCount = (int) $oldBookStmt->fetchColumn();
+
+            // 4) ลบ items เดิม → CASCADE ลบ volumes + inventory_books (เฉพาะ available)
+            $delItems = $this->db->prepare("DELETE FROM purchase_items WHERE purchase_id = :pid");
+            $delItems->execute([':pid' => $purchaseId]);
+            $deletedItemCount = $delItems->rowCount();
+
+            // 5) อัปเดต header ของ purchases
+            $upd = $this->db->prepare(
+                "UPDATE purchases
+                    SET purchase_date = :pdate,
+                        total_shipping_cost = :ship,
+                        total_book_count = :count,
+                        note = :note
+                  WHERE id = :id"
+            );
+            $upd->execute([
+                ':pdate' => $validated['header']['purchase_date'],
+                ':ship'  => $validated['header']['total_shipping_cost'],
+                ':count' => $validated['totalBookCount'],
+                ':note'  => $validated['header']['note'] ?? null,
+                ':id'    => $purchaseId,
+            ]);
+
+            // 6) ใส่ items/volumes/books ใหม่
+            $this->insertItemsAndBooks($purchaseId, $validated['items'], $validated['header'], $validated['shippingPerBook']);
+
+            $this->db->commit();
+
+            return [
+                'updated' => [
+                    'items'   => $deletedItemCount,
+                    'volumes' => $oldVolumeCount,
+                    'books'   => $oldBookCount,
+                ],
+            ];
+        } catch (Throwable $e) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            throw $e;
+        }
+    }
+
+    /**
+     * Validation ร่วม: ตรวจ items/ranges, รวมจำนวนเล่ม, คำนวณ shipping/เล่ม
+     */
+    private function validateAndCompute(array $header, array $items): array
+    {
         $totalBookCount = 0;
         foreach ($items as &$item) {
             if (empty($item['ranges'])) {
@@ -61,90 +203,79 @@ class PurchaseModel extends Model
         }
         unset($item);
 
-        $totalShipping = (float) $header['total_shipping_cost'];
-        $shippingPerBook = $totalBookCount > 0 ? $totalShipping / $totalBookCount : 0;
+        $normalizedHeader = [
+            'purchase_date'       => $header['purchase_date'],
+            'total_shipping_cost' => (float) ($header['total_shipping_cost'] ?? 0),
+            'note'                => $header['note'] ?? null,
+        ];
+        $shippingPerBook = $totalBookCount > 0 ? $normalizedHeader['total_shipping_cost'] / $totalBookCount : 0;
 
-        $this->db->beginTransaction();
+        return [
+            'header'          => $normalizedHeader,
+            'items'           => $items,
+            'totalBookCount'  => $totalBookCount,
+            'shippingPerBook' => $shippingPerBook,
+        ];
+    }
 
-        try {
-            $purchaseCode = 'PO-' . date('Ymd-His');
+    /**
+     * INSERT purchase_items + purchase_item_volumes + inventory_books
+     * ใช้ร่วมกันทั้ง create และ replace
+     */
+    private function insertItemsAndBooks(int $purchaseId, array $items, array $header, float $shippingPerBook): void
+    {
+        $itemStmt = $this->db->prepare(
+            "INSERT INTO purchase_items (purchase_id, title, item_price)
+             VALUES (:pid, :title, :price)"
+        );
 
-            $stmt = $this->db->prepare(
-                "INSERT INTO purchases (purchase_code, purchase_date, total_shipping_cost, total_book_count, note)
-                 VALUES (:code, :pdate, :ship, :count, :note)"
-            );
-            $stmt->execute([
-                ':code'  => $purchaseCode,
-                ':pdate' => $header['purchase_date'],
-                ':ship'  => $totalShipping,
-                ':count' => $totalBookCount,
-                ':note'  => $header['note'] ?? null,
+        $volStmt = $this->db->prepare(
+            "INSERT INTO purchase_item_volumes (purchase_item_id, volume_start, volume_end, quantity)
+             VALUES (:piid, :vs, :ve, :qty)"
+        );
+
+        $bookStmt = $this->db->prepare(
+            "INSERT INTO inventory_books (purchase_item_volume_id, title, volume, unit_cost, purchase_date)
+             VALUES (:piv, :title, :volume, :cost, :pdate)"
+        );
+
+        foreach ($items as $item) {
+            $itemPrice = (float) $item['item_price'];
+            $itemQty   = (int) $item['__qty'];
+
+            $itemStmt->execute([
+                ':pid'   => $purchaseId,
+                ':title' => $item['title'],
+                ':price' => $itemPrice,
             ]);
-            $purchaseId = (int) $this->db->lastInsertId();
+            $purchaseItemId = (int) $this->db->lastInsertId();
 
-            $itemStmt = $this->db->prepare(
-                "INSERT INTO purchase_items (purchase_id, title, item_price)
-                 VALUES (:pid, :title, :price)"
-            );
+            $baseCostPerBook = $itemPrice / $itemQty;
+            $unitCost = round($baseCostPerBook + $shippingPerBook, 2);
 
-            $volStmt = $this->db->prepare(
-                "INSERT INTO purchase_item_volumes (purchase_item_id, volume_start, volume_end, quantity)
-                 VALUES (:piid, :vs, :ve, :qty)"
-            );
+            foreach ($item['ranges'] as $range) {
+                $vs = (int) $range['volume_start'];
+                $ve = (int) $range['volume_end'];
 
-            $bookStmt = $this->db->prepare(
-                "INSERT INTO inventory_books (purchase_item_volume_id, title, volume, unit_cost, purchase_date)
-                 VALUES (:piv, :title, :volume, :cost, :pdate)"
-            );
-
-            foreach ($items as $item) {
-                $itemPrice = (float) $item['item_price'];
-                $itemQty   = (int) $item['__qty'];
-
-                // 1) เพิ่มเรื่อง (purchase_items)
-                $itemStmt->execute([
-                    ':pid'   => $purchaseId,
-                    ':title' => $item['title'],
-                    ':price' => $itemPrice,
+                $qty = ($ve - $vs) + 1;
+                $volStmt->execute([
+                    ':piid' => $purchaseItemId,
+                    ':vs'   => $vs,
+                    ':ve'   => $ve,
+                    ':qty'  => $qty,
                 ]);
-                $purchaseItemId = (int) $this->db->lastInsertId();
+                $volumeId = (int) $this->db->lastInsertId();
 
-                // ต้นทุนต่อเล่ม (เฉพาะส่วนของราคาซื้อ) = item_price / item_qty
-                $baseCostPerBook = $itemPrice / $itemQty;
-                $unitCost = round($baseCostPerBook + $shippingPerBook, 2);
-
-                foreach ($item['ranges'] as $range) {
-                    $vs = (int) $range['volume_start'];
-                    $ve = (int) $range['volume_end'];
-
-                    // 2) เพิ่มช่วงเล่ม (purchase_item_volumes)
-                    $qty = ($ve - $vs) + 1;
-                    $volStmt->execute([
-                        ':piid' => $purchaseItemId,
-                        ':vs'   => $vs,
-                        ':ve'   => $ve,
-                        ':qty'  => $qty,
+                for ($vol = $vs; $vol <= $ve; $vol++) {
+                    $bookStmt->execute([
+                        ':piv'    => $volumeId,
+                        ':title'  => $item['title'],
+                        ':volume' => $vol,
+                        ':cost'   => $unitCost,
+                        ':pdate'  => $header['purchase_date'],
                     ]);
-                    $volumeId = (int) $this->db->lastInsertId();
-
-                    // 3) แตกเป็น inventory_books ทีละเล่ม (อ้างอิง purchase_item_volumes)
-                    for ($vol = $vs; $vol <= $ve; $vol++) {
-                        $bookStmt->execute([
-                            ':piv'    => $volumeId,
-                            ':title'  => $item['title'],
-                            ':volume' => $vol,
-                            ':cost'   => $unitCost,
-                            ':pdate'  => $header['purchase_date'],
-                        ]);
-                    }
                 }
             }
-
-            $this->db->commit();
-            return $purchaseId;
-        } catch (Throwable $e) {
-            $this->db->rollBack();
-            throw $e;
         }
     }
 

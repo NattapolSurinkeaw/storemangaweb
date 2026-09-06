@@ -612,6 +612,168 @@ hr{ border-color: var(--color-border); opacity: 1; }
 .text-muted{ color: var(--color-slate-soft) !important; }
 .small, small{ font-size: .8em; }
 
+/* Thumbnail helper used in tables & cards */
+.thumb-xs{
+  width: 48px; height: 64px; object-fit: cover;
+  border-radius: 4px; border: 1px solid #ddd;
+  display: inline-block;
+}
+
 @media (prefers-reduced-motion: reduce){
   *{ transition: none !important; animation: none !important; }
+}
+
+/* ============================== Mobile UX =================================== */
+
+@media (max-width: 767.98px){
+
+  /* ----- Larger touch targets ----- */
+  .btn{ min-height: 38px; padding: .45rem .9rem; }
+  .btn-sm{ min-height: 34px; padding: .3rem .7rem; }
+  .form-control, .form-select{ min-height: 42px; font-size: 16px; /* กัน iOS zoom */ }
+  .form-check-input{ width: 1.25em; height: 1.25em; margin-top: .15em; }
+  .form-check-input[type="checkbox"]{ transform: scale(1.15); }
+
+  /* ----- Header / brand ----- */
+  .topbar .brand-text{ font-size: .95rem; }
+  .topbar .brand-text small{ display: none; }
+  .topbar .menu-btn{ width: 44px; height: 40px; }
+
+  /* ----- Page title ----- */
+  .page-title{ margin-bottom: 1rem; padding-bottom: .65rem; }
+  .page-title h3{ font-size: 1.2rem; }
+
+  /* ----- Cards ----- */
+  .card{ border-radius: var(--radius-md); }
+  .card.p-4{ padding: 1rem !important; }
+
+  /* ----- Tables → card list improvements ----- */
+  table.table-flex-mobile tr{
+    padding: .65rem .85rem;
+  }
+  table.table-flex-mobile td{
+    flex-wrap: wrap;
+    gap: .35rem .65rem;
+    padding: .25rem 0;
+    font-size: .9rem;
+  }
+  table.table-flex-mobile td[data-label]:not([data-label=""])::before{
+    flex: 0 0 auto; min-width: 5.5rem;
+  }
+  table.table-flex-mobile .thumb-xs{
+    width: 44px; height: 60px;
+  }
+
+  /* Row actions inside card-list */
+  .row-actions{
+    display: flex !important;
+    justify-content: flex-end;
+    gap: .4rem;
+    margin-top: .35rem;
+    padding-top: .55rem !important;
+    border-top: 1px dashed var(--color-border) !important;
+    width: 100%;
+  }
+  .row-actions .btn{
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+  .row-actions .btn i{ margin-right: .25rem; }
+
+  /* ----- Stat cards ----- */
+  .stat-card{ padding: .9rem 1rem; }
+  .stat-card .stat-value{ font-size: 1.35rem; }
+  .stat-card::after{ width: 60px; height: 60px; right: -12px; top: -12px; }
+
+  /* ----- Form layout ----- */
+  .row.g-3 > [class*="col-md-"],
+  .row.g-2 > [class*="col-md-"]{
+    margin-bottom: .25rem;
+  }
+  .form-label{ font-size: .85rem; margin-bottom: .25rem; }
+
+  /* Multi-row item form (bundle, purchase) */
+  .item-row .form-label.d-md-none{ font-weight: 600; color: var(--color-ink); }
+  .item-row{ padding: .5rem .65rem; border: 1px solid var(--color-border-soft); border-radius: var(--radius-sm); background: var(--color-surface-mut); margin-bottom: .55rem !important; }
+  .item-row .remove-row-btn{ width: 38px; height: 38px; }
+  .item-row .col-md-2.text-end{ text-align: right !important; }
+
+  /* Volume chip buttons → wrap better */
+  .item-chips-area .btn{ font-size: .78rem; padding: .3rem .55rem; }
+
+  /* ----- Sticky submit bar ----- */
+  .submit-bar{
+    position: sticky; bottom: calc(var(--bottomnav-h) + 8px); z-index: 1019;
+    background: var(--color-surface);
+    border-top: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: .7rem .85rem;
+    margin-top: 1rem;
+    box-shadow: 0 -2px 14px rgba(34,48,71,.08);
+    display: flex; align-items: center; gap: .65rem; flex-wrap: wrap;
+  }
+  .submit-bar .btn{ flex: 1 1 140px; min-height: 44px; }
+  .submit-bar .submit-hint{ flex: 1 1 100%; font-size: .78rem; margin: 0; }
+
+  /* ----- Bottom nav: active dot indicator ----- */
+  .bottom-nav a{ position: relative; }
+  .bottom-nav a.active::before{
+    content: "";
+    position: absolute; top: 4px; left: 50%; transform: translateX(-50%);
+    width: 18px; height: 3px; border-radius: 2px;
+    background: var(--color-gold-dark);
+  }
+  .bottom-nav a.active{ color: var(--color-gold-dark); }
+  .bottom-nav a.active i{ transform: scale(1.05); }
+
+  /* ----- Modal → bottom sheet on mobile ----- */
+  .modal-dialog{
+    margin: 0;
+    align-items: flex-end;
+  }
+  .modal-content{
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    border-top-left-radius: 18px;
+    border-top-right-radius: 18px;
+    max-height: 92vh;
+  }
+  .modal-header{
+    padding: .85rem 1rem .65rem;
+    position: relative;
+  }
+  .modal-header::after{
+    content: "";
+    position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
+    width: 36px; height: 4px; border-radius: 2px;
+    background: var(--color-border);
+  }
+  .modal-body{ padding: .85rem 1rem 1rem; }
+  .modal-body .table-responsive{ max-height: 50vh; overflow-y: auto; }
+
+  /* ----- Alerts ----- */
+  .alert{ padding: .6rem .85rem; font-size: .85rem; }
+
+  /* ----- Dashboard cards spacing ----- */
+  .row.g-3{ --bs-gutter-y: .75rem; }
+
+  /* ----- Image preview grid ----- */
+  #imagePreview > div{ width: 70px !important; height: 70px !important; }
+}
+
+/* ----- bottom-sheet on tablet portrait too ----- */
+@media (max-width: 991.98px){
+  .modal-dialog{ margin: 0; align-items: flex-end; }
+  .modal-content{
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    border-top-left-radius: 18px;
+    border-top-right-radius: 18px;
+    max-height: 88vh;
+  }
+}
+
+/* ----- Desktop: tiny polish ----- */
+@media (min-width: 992px){
+  .submit-bar{ max-width: 720px; }
 }

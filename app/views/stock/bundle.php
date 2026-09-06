@@ -64,11 +64,11 @@
             </div>
         </div>
 
-        <div class="mt-3">
+        <div class="submit-bar">
             <button type="submit" id="submitBtn" class="btn btn-primary" disabled>
                 <i class="bi bi-collection"></i> ยืนยันจัดชุด
             </button>
-            <span id="submitHint" class="text-muted small ms-2">เพิ่มเรื่องและเลือกช่วงเล่มที่มีสต็อกครบก่อน</span>
+            <p id="submitHint" class="submit-hint text-muted small mb-0">เพิ่มเรื่องและเลือกช่วงเล่มที่มีสต็อกครบก่อน</p>
         </div>
     </form>
 </div>
@@ -97,7 +97,7 @@
             </div>
         </div>
         <div class="table-responsive">
-            <table class="table table-sm align-middle">
+            <table class="table table-sm table-flex-mobile align-middle">
                 <thead><tr>
                     <th style="width:40px;"><input type="checkbox" id="checkAllBundles"></th>
                     <th>#</th><th>รูป</th><th>เรื่อง</th><th>ช่วงเล่ม</th><th>จำนวนเล่ม</th><th>ต้นทุนรวม</th>
@@ -105,21 +105,21 @@
                 <tbody>
                 <?php foreach ($bundles as $b): ?>
                     <tr>
-                        <td><input type="checkbox" class="bundle-check" name="bundle_ids[]" value="<?= (int)$b['id'] ?>"></td>
-                        <td><?= (int)$b['id'] ?></td>
-                        <td>
+                        <td data-label="เลือก"><input type="checkbox" class="bundle-check" name="bundle_ids[]" value="<?= (int)$b['id'] ?>"></td>
+                        <td data-label="#"><?= (int)$b['id'] ?></td>
+                        <td data-label="รูป">
                             <?php if (!empty($b['cover_image'])): ?>
                                 <img src="<?= BASE_URL ?>/<?= htmlspecialchars($b['cover_image']) ?>"
                                      alt="cover"
-                                     style="width:48px;height:64px;object-fit:cover;border-radius:4px;border:1px solid #ddd;">
+                                     class="thumb-xs">
                             <?php else: ?>
                                 <span class="text-muted small">ไม่มีรูป</span>
                             <?php endif; ?>
                         </td>
-                        <td><?= htmlspecialchars($b['title']) ?></td>
-                        <td><span class="badge bg-info text-dark">เล่ม <?= (int)$b['volume_start'] ?> - <?= (int)$b['volume_end'] ?></span></td>
-                        <td><?= (int)$b['book_count'] ?></td>
-                        <td><?= number_format((float)$b['total_cost'], 2) ?> ฿</td>
+                        <td data-label="เรื่อง"><?= htmlspecialchars($b['title']) ?></td>
+                        <td data-label="ช่วงเล่ม"><span class="badge bg-info text-dark">เล่ม <?= (int)$b['volume_start'] ?> - <?= (int)$b['volume_end'] ?></span></td>
+                        <td data-label="จำนวนเล่ม"><?= (int)$b['book_count'] ?></td>
+                        <td data-label="ต้นทุนรวม"><?= number_format((float)$b['total_cost'], 2) ?> ฿</td>
                     </tr>
                 <?php endforeach; ?>
                 </tbody>
@@ -132,7 +132,7 @@
 <div class="card p-4">
     <div class="panel-title"><i class="bi bi-bookshelf"></i> ชุดที่พร้อมขาย</div>
     <div class="table-responsive">
-        <table class="table table-sm align-middle">
+        <table class="table table-sm table-flex-mobile align-middle">
             <thead><tr>
                 <th>#</th><th>ประเภท</th><th>รูป</th><th>เรื่อง</th><th>ช่วงเล่ม</th>
                 <th>จำนวนเล่ม</th><th>ต้นทุนรวม</th><th>ต้นทุน/เล่ม</th><th></th>
@@ -140,65 +140,65 @@
             <tbody>
             <?php foreach ($bundleGroups as $g): ?>
                 <tr>
-                    <td>#<?= (int)$g['id'] ?></td>
-                    <td><span class="badge bg-warning text-dark"><i class="bi bi-box2-heart"></i> กลุ่มรวม</span></td>
-                    <td>
+                    <td data-label="#">#<?= (int)$g['id'] ?></td>
+                    <td data-label="ประเภท"><span class="badge bg-warning text-dark"><i class="bi bi-box2-heart"></i> กลุ่มรวม</span></td>
+                    <td data-label="รูป">
                         <?php if (!empty($g['cover_image'])): ?>
                             <img src="<?= BASE_URL ?>/<?= htmlspecialchars($g['cover_image']) ?>"
                                  alt="cover"
-                                 style="width:48px;height:64px;object-fit:cover;border-radius:4px;border:1px solid #ddd;">
+                                 class="thumb-xs">
                         <?php else: ?>
                             <span class="text-muted small">ไม่มีรูป</span>
                         <?php endif; ?>
                     </td>
-                    <td>
+                    <td data-label="เรื่อง">
                         <div class="fw-semibold"><?= htmlspecialchars($g['label'] ?? 'กลุ่มขายรวม') ?></div>
                         <div class="small text-muted"><?= (int)$g['bundle_count'] ?> เรื่อง</div>
                     </td>
-                    <td><span class="badge bg-info text-dark">รวมหลายเรื่อง</span></td>
-                    <td><?= (int)$g['book_count'] ?></td>
-                    <td><?= number_format((float)$g['total_cost'], 2) ?> ฿</td>
-                    <td class="text-muted"><?= $g['book_count'] > 0 ? number_format((float)$g['total_cost'] / $g['book_count'], 2) : '0.00' ?> ฿</td>
-                    <td class="text-nowrap">
+                    <td data-label="ช่วงเล่ม"><span class="badge bg-info text-dark">รวมหลายเรื่อง</span></td>
+                    <td data-label="จำนวนเล่ม"><?= (int)$g['book_count'] ?></td>
+                    <td data-label="ต้นทุนรวม"><?= number_format((float)$g['total_cost'], 2) ?> ฿</td>
+                    <td data-label="ต้นทุน/เล่ม" class="text-muted"><?= $g['book_count'] > 0 ? number_format((float)$g['total_cost'] / $g['book_count'], 2) : '0.00' ?> ฿</td>
+                    <td data-label="" class="row-actions">
                         <button type="button" class="btn btn-sm btn-outline-primary view-group-btn"
                                 data-id="<?= (int)$g['id'] ?>">
-                            <i class="bi bi-eye"></i> ดูรายละเอียด
+                            <i class="bi bi-eye"></i> ดู
                         </button>
                         <a class="btn btn-sm btn-outline-danger"
                            href="<?= BASE_URL ?>/index.php?url=stock/dissolveBundleGroup/<?= (int)$g['id'] ?>"
                            onclick="return confirm('ยืนยันยกเลิกกลุ่ม #<?= (int)$g['id'] ?> และคืนเล่มทุกเรื่องเข้าสต็อก?');">
-                           <i class="bi bi-x-circle"></i> ยกเลิกกลุ่ม
+                           <i class="bi bi-x-circle"></i> ยกเลิก
                         </a>
                     </td>
                 </tr>
             <?php endforeach; ?>
             <?php foreach ($bundles as $b): ?>
                 <tr>
-                    <td><?= (int)$b['id'] ?></td>
-                    <td><span class="badge bg-secondary"><i class="bi bi-collection"></i> ชุดเดี่ยว</span></td>
-                    <td>
+                    <td data-label="#"><?= (int)$b['id'] ?></td>
+                    <td data-label="ประเภท"><span class="badge bg-secondary"><i class="bi bi-collection"></i> ชุดเดี่ยว</span></td>
+                    <td data-label="รูป">
                         <?php if (!empty($b['cover_image'])): ?>
                             <img src="<?= BASE_URL ?>/<?= htmlspecialchars($b['cover_image']) ?>"
                                  alt="cover"
-                                 style="width:48px;height:64px;object-fit:cover;border-radius:4px;border:1px solid #ddd;">
+                                 class="thumb-xs">
                         <?php else: ?>
                             <span class="text-muted small">ไม่มีรูป</span>
                         <?php endif; ?>
                     </td>
-                    <td><?= htmlspecialchars($b['title']) ?></td>
-                    <td><span class="badge bg-info text-dark">เล่ม <?= (int)$b['volume_start'] ?> - <?= (int)$b['volume_end'] ?></span></td>
-                    <td><?= (int)$b['book_count'] ?></td>
-                    <td><?= number_format((float)$b['total_cost'], 2) ?> ฿</td>
-                    <td class="text-muted"><?= $b['book_count'] > 0 ? number_format((float)$b['total_cost'] / $b['book_count'], 2) : '0.00' ?> ฿</td>
-                    <td class="text-nowrap">
+                    <td data-label="เรื่อง"><?= htmlspecialchars($b['title']) ?></td>
+                    <td data-label="ช่วงเล่ม"><span class="badge bg-info text-dark">เล่ม <?= (int)$b['volume_start'] ?> - <?= (int)$b['volume_end'] ?></span></td>
+                    <td data-label="จำนวนเล่ม"><?= (int)$b['book_count'] ?></td>
+                    <td data-label="ต้นทุนรวม"><?= number_format((float)$b['total_cost'], 2) ?> ฿</td>
+                    <td data-label="ต้นทุน/เล่ม" class="text-muted"><?= $b['book_count'] > 0 ? number_format((float)$b['total_cost'] / $b['book_count'], 2) : '0.00' ?> ฿</td>
+                    <td data-label="" class="row-actions">
                         <button type="button" class="btn btn-sm btn-outline-primary view-bundle-btn"
                                 data-id="<?= (int)$b['id'] ?>">
-                            <i class="bi bi-eye"></i> ดูรายละเอียด
+                            <i class="bi bi-eye"></i> ดู
                         </button>
                         <a class="btn btn-sm btn-outline-danger"
                            href="<?= BASE_URL ?>/index.php?url=stock/dissolveBundle/<?= (int)$b['id'] ?>"
                            onclick="return confirm('ยืนยันยกเลิกชุดนี้และคืนเล่มเข้าสต็อก?');">
-                           <i class="bi bi-x-circle"></i> ยกเลิกชุด
+                           <i class="bi bi-x-circle"></i> ยกเลิก
                         </a>
                     </td>
                 </tr>

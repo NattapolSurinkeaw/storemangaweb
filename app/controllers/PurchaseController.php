@@ -15,6 +15,7 @@ class PurchaseController extends Controller
 
     public function __construct()
     {
+        parent::__construct();
         $this->purchaseModel = new PurchaseModel();
     }
 
@@ -32,9 +33,68 @@ class PurchaseController extends Controller
             return;
         }
 
+        // ตรวจ ?edit={id} สำหรับโหมดแก้ไข
+        $editId = (int) ($_GET['edit'] ?? 0);
+        $editing = null;
+        $editingImages = [];
+        if ($editId > 0) {
+            $editing = $this->purchaseModel->getPurchaseWithItems($editId);
+            if (!$editing) {
+                $this->flash('warning', 'ไม่พบบิลซื้อที่ต้องการแก้ไข');
+                $this->redirect('purchase/create');
+            }
+            $editingImages = $this->purchaseModel->getPurchaseImages($editId);
+            // แปลง volumes → ranges เพื่อให้ form pre-fill ได้ง่าย
+            foreach ($editing['items'] as &$it) {
+                $it['ranges'] = array_map(fn($v) => [
+                    'start' => (int) $v['volume_start'],
+                    'end'   => (int) $v['volume_end'],
+                ], $it['volumes'] ?? []);
+            }
+            unset($it);
+        }
+
         $this->view('purchase/create', [
-            'purchases' => $this->purchaseModel->getAllPurchases(),
+            'purchases'     => $this->purchaseModel->getAllPurchases(),
+            'editing'       => $editing,
+            'editingImages' => $editingImages,
         ]);
+    }
+
+    /**
+     * บันทึกการแก้ไขบิลซื้อ (POST เท่านั้น)
+     */
+    public function update(int $id): void
+    {
+        $this->requireAdmin();
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            $this->flash('danger', 'Method not allowed');
+            $this->redirect('purchase/create');
+        }
+
+        try {
+            $header = [
+                'purchase_date'       => $this->input('purchase_date', date('Y-m-d')),
+                'total_shipping_cost' => (float) $this->input('total_shipping_cost', 0),
+                'note'                => $this->input('note', ''),
+            ];
+
+            $items = $this->parseItemsFromPost();
+
+            $result = $this->purchaseModel->replacePurchaseItems($id, $header, $items);
+            $u = $result['updated'];
+
+            $this->flash('success',
+                "แก้ไขบิลซื้อ #{$id} สำเร็จ (อัปเดต {$u['items']} รายการ, {$u['volumes']} ช่วงเล่ม, {$u['books']} เล่ม)"
+            );
+        } catch (Throwable $e) {
+            $this->flash('danger', 'แก้ไขไม่สำเร็จ: ' . $e->getMessage());
+            $this->redirect('purchase/create?edit=' . $id);
+            return;
+        }
+
+        $this->redirect('purchase/create');
     }
 
     /**

@@ -1,23 +1,51 @@
 <div class="page-title">
     <i class="bi bi-bag-plus"></i>
-    <h3>บันทึกบิลซื้อเข้า <?php if (!$__isAdmin): ?><span class="badge bg-secondary ms-2">ดูอย่างเดียว</span><?php endif; ?></h3>
+    <h3>
+        <?php if (!empty($editing)): ?>
+            แก้ไขบิลซื้อเข้า
+            <span class="badge bg-warning text-dark ms-2">
+                <i class="bi bi-pencil-square"></i> แก้ไข #<?= (int) $editing['id'] ?> · <?= htmlspecialchars($editing['purchase_code']) ?>
+            </span>
+        <?php else: ?>
+            บันทึกบิลซื้อเข้า
+            <?php if (!$__isAdmin): ?><span class="badge bg-secondary ms-2">ดูอย่างเดียว</span><?php endif; ?>
+        <?php endif; ?>
+    </h3>
 </div>
+
+<?php if (!empty($editing)): ?>
+    <?php $soldCount = 0; $bundleCount = 0; /* เช็คเพื่อแจ้งเตือน */ ?>
+    <div class="alert alert-warning d-flex align-items-start mb-3">
+        <i class="bi bi-exclamation-triangle me-2 fs-5 mt-1"></i>
+        <div class="small">
+            <strong>โหมดแก้ไข:</strong> ระบบจะลบรายการเดิมและสร้างใหม่ตามข้อมูลด้านล่าง
+            <strong class="text-danger">ไม่สามารถแก้ไขได้หากมีหนังสือในบิลถูกขายไปแล้วหรืออยู่ในชุดขาย</strong>
+            <br>
+            <span class="text-muted">รูปสลิปเดิมจะยังคงอยู่ ไม่ถูกลบ</span>
+        </div>
+    </div>
+<?php endif; ?>
 
 <?php if ($__isAdmin): ?>
 <div class="card p-4 mb-4">
-    <form method="POST" action="<?= BASE_URL ?>/index.php?url=purchase/create" id="purchaseForm" enctype="multipart/form-data">
+    <form method="POST"
+          action="<?= !empty($editing) ? BASE_URL . '/index.php?url=purchase/update/' . (int) $editing['id'] : BASE_URL . '/index.php?url=purchase/create' ?>"
+          id="purchaseForm" enctype="multipart/form-data">
         <div class="row g-3 mb-3">
             <div class="col-md-4">
                 <label class="form-label">วันที่ซื้อ</label>
-                <input type="date" name="purchase_date" class="form-control" value="<?= date('Y-m-d') ?>" required>
+                <input type="date" name="purchase_date" class="form-control"
+                       value="<?= !empty($editing) ? htmlspecialchars($editing['purchase_date']) : date('Y-m-d') ?>" required>
             </div>
             <div class="col-md-4">
                 <label class="form-label">ค่าส่งรวมทั้งบิล (บาท)</label>
-                <input type="number" step="0.01" min="0" name="total_shipping_cost" id="total_shipping_cost" class="form-control" value="0" required>
+                <input type="number" step="0.01" min="0" name="total_shipping_cost" id="total_shipping_cost" class="form-control"
+                       value="<?= !empty($editing) ? htmlspecialchars($editing['total_shipping_cost']) : '0' ?>" required>
             </div>
             <div class="col-md-4">
                 <label class="form-label">หมายเหตุ</label>
-                <input type="text" name="note" class="form-control" placeholder="เช่น ชื่อร้าน / เพจที่ซื้อ">
+                <input type="text" name="note" class="form-control" placeholder="เช่น ชื่อร้าน / เพจที่ซื้อ"
+                       value="<?= !empty($editing) ? htmlspecialchars($editing['note'] ?? '') : '' ?>">
             </div>
         </div>
 
@@ -27,9 +55,30 @@
             <button type="button" id="addItemBtn" class="btn btn-sm btn-outline-primary"><i class="bi bi-plus-circle"></i> เพิ่มเรื่อง</button>
         </div>
 
+        <?php if (!empty($editing)): ?>
+        <div class="card mb-3 border-secondary">
+            <div class="card-body py-2">
+                <div class="fw-semibold mb-1"><i class="bi bi-images"></i> รูปสลิปเดิม</div>
+                <div class="d-flex flex-wrap gap-2" id="existingImages">
+                    <?php foreach (($editingImages ?? []) as $img): ?>
+                        <a href="<?= BASE_URL ?>/<?= htmlspecialchars($img['image_path']) ?>" target="_blank">
+                            <img src="<?= BASE_URL ?>/<?= htmlspecialchars($img['image_path']) ?>"
+                                 alt="slip"
+                                 style="width:90px;height:90px;object-fit:cover;border:1px solid #ddd;border-radius:6px;">
+                        </a>
+                    <?php endforeach; ?>
+                    <?php if (empty($editingImages)): ?>
+                        <span class="text-muted small">ไม่มีรูปสลิป</span>
+                    <?php endif; ?>
+                </div>
+                <div class="form-text">หากต้องการเพิ่มรูปใหม่ ให้เลือกไฟล์ด้านล่าง (รูปเดิมจะไม่ถูกลบ)</div>
+            </div>
+        </div>
+        <?php endif; ?>
+
         <div class="card mb-3 border-info">
             <div class="card-body py-2">
-                <label class="form-label fw-semibold mb-1"><i class="bi bi-image"></i> แนบรูปภาพบิลซื้อ (ถ้ามี)</label>
+                <label class="form-label fw-semibold mb-1"><i class="bi bi-image"></i> แนบรูปภาพบิลซื้อเพิ่ม (ถ้ามี)</label>
                 <input type="file" name="purchase_images[]" id="purchaseImages" class="form-control" accept="image/jpeg,image/png,image/gif,image/webp" multiple>
                 <div class="form-text">รองรับ jpg/png/gif/webp ขนาดไม่เกิน 5MB ต่อไฟล์ (เลือกได้หลายไฟล์)</div>
                 <div id="imagePreview" class="d-flex flex-wrap gap-2 mt-2"></div>
@@ -43,9 +92,28 @@
             <span>ยอดซื้อรวม (ไม่รวมค่าส่ง): <strong id="totalPriceDisplay">0.00</strong> ฿</span>
         </div>
 
-        <button type="submit" class="btn btn-primary"><i class="bi bi-save"></i> บันทึกบิลซื้อ</button>
+        <div class="submit-bar">
+            <?php if (!empty($editing)): ?>
+                <button type="submit" class="btn btn-warning">
+                    <i class="bi bi-check-circle"></i> บันทึกการแก้ไข
+                </button>
+                <a href="<?= BASE_URL ?>/index.php?url=purchase/create" class="btn btn-outline-secondary">
+                    <i class="bi bi-x-circle"></i> ยกเลิกการแก้ไข
+                </a>
+                <p class="submit-hint text-muted small mb-0">
+                    <i class="bi bi-info-circle"></i> กำลังแก้ไขบิล <strong>#<?= (int) $editing['id'] ?></strong> — การบันทึกจะลบรายการเดิมและสร้างใหม่
+                </p>
+            <?php else: ?>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-save"></i> บันทึกบิลซื้อ
+                </button>
+            <?php endif; ?>
+        </div>
     </form>
 </div>
+<script>
+const PURCHASE_PREFILL = <?= json_encode(!empty($editing) ? $editing['items'] : [], JSON_UNESCAPED_UNICODE) ?>;
+</script>
 <?php else: ?>
 <div class="alert alert-info d-flex align-items-center mb-4">
     <i class="bi bi-info-circle me-2 fs-4"></i>
@@ -83,17 +151,21 @@
                             <span class="text-muted small">—</span>
                         <?php endif; ?>
                     </td>
-                    <td class="text-nowrap">
+                    <td data-label="" class="row-actions">
                         <button type="button" class="btn btn-sm btn-outline-primary view-purchase-btn"
                                 data-id="<?= (int)$p['id'] ?>">
-                            <i class="bi bi-eye"></i> ดูรายละเอียด
+                            <i class="bi bi-eye"></i> ดู
                         </button>
                         <?php if ($__isAdmin): ?>
+                        <a class="btn btn-sm btn-outline-warning"
+                           href="<?= BASE_URL ?>/index.php?url=purchase/create&edit=<?= (int)$p['id'] ?>">
+                           <i class="bi bi-pencil-square"></i> แก้ไข
+                        </a>
                         <button type="button" class="btn btn-sm btn-outline-danger delete-purchase-btn"
                                 data-id="<?= (int)$p['id'] ?>"
                                 data-code="<?= htmlspecialchars($p['purchase_code']) ?>"
                                 data-books="<?= (int)$p['book_count'] ?>">
-                            <i class="bi bi-trash"></i> ลบบิล
+                            <i class="bi bi-trash"></i> ลบ
                         </button>
                         <?php endif; ?>
                     </td>
@@ -246,6 +318,46 @@ function recalcAll() {
 }
 
 document.getElementById('addItemBtn').addEventListener('click', addItem);
+
+// Pre-fill form เมื่ออยู่ในโหมดแก้ไข
+if (Array.isArray(PURCHASE_PREFILL) && PURCHASE_PREFILL.length > 0) {
+    // ลบ default row แรกออก
+    const defaultCard = itemsContainer.querySelector('.item-card');
+    if (defaultCard) defaultCard.remove();
+
+    PURCHASE_PREFILL.forEach(item => {
+        addItem();
+        const card = itemsContainer.lastElementChild;
+        if (!card) return;
+        card.querySelector('.item-title').value = item.title || '';
+        card.querySelector('.item-price').value = parseFloat(item.item_price || 0).toFixed(2);
+
+        // ลบ range default แล้วใส่จากข้อมูลเดิม
+        const rangesContainer = card.querySelector('.ranges-container');
+        if (rangesContainer) rangesContainer.innerHTML = '';
+
+        const ranges = item.ranges || [];
+        if (ranges.length === 0) {
+            addRange(card, parseInt(card.dataset.itemIndex));
+        } else {
+            ranges.forEach(r => {
+                addRange(card, parseInt(card.dataset.itemIndex));
+                const rangeRows = card.querySelectorAll('.range-row');
+                const lastRow = rangeRows[rangeRows.length - 1];
+                if (lastRow) {
+                    lastRow.querySelector('.range-start').value = r.start;
+                    lastRow.querySelector('.range-end').value = r.end;
+                }
+            });
+        }
+    });
+    recalcAll();
+    // เลื่อนไปที่ฟอร์ม
+    setTimeout(() => {
+        const form = document.getElementById('purchaseForm');
+        if (form) form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+}
 
 itemsContainer.addEventListener('click', function (e) {
     const itemCard = e.target.closest('.item-card');

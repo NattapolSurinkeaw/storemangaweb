@@ -129,6 +129,120 @@ class SalesModel extends Model
         return $stmt->fetchAll();
     }
 
+    public function findSale(int $id): ?array
+    {
+        $stmt = $this->db->prepare("SELECT * FROM sales WHERE id = :id");
+        $stmt->execute([':id' => $id]);
+        $row = $stmt->fetch();
+        return $row ?: null;
+    }
+
+    /**
+     * แก้ไขการขาย (เฉพาะราคา/ค่าธรรมเนียม/วันที่/ช่องทาง — ไม่เปลี่ยน ref_type/ref_id)
+     * คำนวณ net_revenue / profit ใหม่จาก cost_amount เดิม
+     */
+    public function updateSale(int $id, string $channel, float $feePercent, float $feeAmount, float $salePrice, string $saleDate): void
+    {
+        $this->db->beginTransaction();
+        try {
+            // lock แถวเดิมเพื่อกัน race
+            $chk = $this->db->prepare("SELECT cost_amount FROM sales WHERE id = :id FOR UPDATE");
+            $chk->execute([':id' => $id]);
+            $sale = $chk->fetch();
+            if (!$sale) {
+                throw new RuntimeException('ไม่พบรายการขายนี้');
+            }
+
+            if ($channel === 'facebook') {
+                $finalFeeAmount  = round($feeAmount, 2);
+                $finalFeePercent = $salePrice > 0 ? round(($finalFeeAmount / $salePrice) * 100, 2) : 0.0;
+            } else {
+                $finalFeePercent = $feePercent;
+                $finalFeeAmount  = round($salePrice * ($feePercent / 100), 2);
+            }
+            $cost        = (float) $sale['cost_amount'];
+            $netRevenue  = round($salePrice - $finalFeeAmount, 2);
+            $profit      = round($netRevenue - $cost, 2);
+
+            $upd = $this->db->prepare(
+                "UPDATE sales
+                    SET channel       = :channel,
+                        fee_percent   = :fee_percent,
+                        fee_amount    = :fee_amount,
+                        sale_price    = :sale_price,
+                        net_revenue   = :net_revenue,
+                        profit_amount = :profit,
+                        sale_date     = :sale_date
+                  WHERE id = :id"
+            );
+            $upd->execute([
+                ':channel'     => $channel,
+                ':fee_percent' => $finalFeePercent,
+                ':fee_amount'  => $finalFeeAmount,
+                ':sale_price'  => $salePrice,
+                ':net_revenue' => $netRevenue,
+                ':profit'      => $profit,
+                ':sale_date'   => $saleDate,
+                ':id'          => $id,
+            ]);
+
+            $this->db->commit();
+        } catch (Throwable $e) {
+            if ($this->db->inTransaction()) $this->db->rollBack();
+            throw $e;
+        }
+    }
+
+    /**
+     * ลบการขาย + revert สถานะสินค้ากลับเป็น 'available'
+     * - book         -> inventory_books.status = 'available'
+     * - bundle       -> bundles.status = 'available'
+     * - bundle_group -> bundle_groups + bundles ใน group = 'available'
+     */
+    public function deleteSale(int $id): array
+    {
+        $this->db->beginTransaction();
+        try {
+            $chk = $this->db->prepare("SELECT ref_type, ref_id FROM sales WHERE id = :id FOR UPDATE");
+            $chk->execute([':id' => $id]);
+            $row = $chk->fetch();
+            if (!$row) {
+                throw new RuntimeException('ไม่พบรายการขายนี้');
+            }
+
+            $refType = $row['ref_type'];
+            $refId   = (int) $row['ref_id'];
+
+            // revert สถานะสินค้า
+            if ($refType === 'book') {
+                $u = $this->db->prepare("UPDATE inventory_books SET status = 'available' WHERE id = :id");
+                $u->execute([':id' => $refId]);
+            } elseif ($refType === 'bundle') {
+                $u = $this->db->prepare("UPDATE bundles SET status = 'available' WHERE id = :id");
+                $u->execute([':id' => $refId]);
+            } elseif ($refType === 'bundle_group') {
+                $u1 = $this->db->prepare("UPDATE bundles SET status = 'available' WHERE group_id = :gid");
+                $u1->execute([':gid' => $refId]);
+                $u2 = $this->db->prepare("UPDATE bundle_groups SET status = 'available' WHERE id = :id");
+                $u2->execute([':id' => $refId]);
+            } else {
+                throw new RuntimeException("ประเภทสินค้าไม่ถูกต้อง: {$refType}");
+            }
+
+            $del = $this->db->prepare("DELETE FROM sales WHERE id = :id");
+            $del->execute([':id' => $id]);
+
+            $this->db->commit();
+            return [
+                'ref_type' => $refType,
+                'ref_id'   => $refId,
+            ];
+        } catch (Throwable $e) {
+            if ($this->db->inTransaction()) $this->db->rollBack();
+            throw $e;
+        }
+    }
+
     public function getTotals(): array
     {
         $stmt = $this->db->query(
