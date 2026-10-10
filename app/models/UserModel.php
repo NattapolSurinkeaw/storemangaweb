@@ -38,6 +38,22 @@ class UserModel extends Model
     }
 
     /**
+     * ค้นหา user ด้วย id พร้อม password_hash (สำหรับตรวจสอบตอนเปลี่ยนรหัสผ่าน)
+     */
+    public function findByIdWithPassword(int $id): ?array
+    {
+        $stmt = $this->db->prepare(
+            'SELECT id, username, password_hash, display_name, role, is_active, created_at, last_login_at
+             FROM users
+             WHERE id = :id AND is_active = 1
+             LIMIT 1'
+        );
+        $stmt->execute([':id' => $id]);
+        $row = $stmt->fetch();
+        return $row ?: null;
+    }
+
+    /**
      * ตรวจสอบ username/password แล้วคืน array ข้อมูล user (ไม่รวม password_hash) หรือ null ถ้าไม่ผ่าน
      */
     public function authenticate(string $username, string $password): ?array
@@ -98,5 +114,24 @@ class UserModel extends Model
              FROM users
              ORDER BY role DESC, username ASC'
         )->fetchAll();
+    }
+
+    /**
+     * อัปเดตข้อมูลทั่วไปของผู้ใช้ (ชื่อที่แสดง)
+     */
+    public function updateProfile(int $id, string $displayName): bool
+    {
+        $stmt = $this->db->prepare('UPDATE users SET display_name = :n WHERE id = :id');
+        return $stmt->execute([':n' => $displayName, ':id' => $id]);
+    }
+
+    /**
+     * เปลี่ยนรหัสผ่านของผู้ใช้
+     */
+    public function updatePassword(int $id, string $newPassword): bool
+    {
+        $hash = password_hash($newPassword, PASSWORD_DEFAULT);
+        $stmt = $this->db->prepare('UPDATE users SET password_hash = :h WHERE id = :id');
+        return $stmt->execute([':h' => $hash, ':id' => $id]);
     }
 }

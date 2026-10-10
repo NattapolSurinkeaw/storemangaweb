@@ -24,37 +24,37 @@
         </div>
 
         <div class="row g-3 align-items-end mt-3">
-            <div class="col-md-4">
+            <div class="col-12 col-md-6 col-lg-4">
                 <label class="form-label">ชื่อกลุ่ม (ถ้ามี ใช้เมื่อจัดชุดรวมหลายเรื่อง)</label>
                 <input type="text" name="group_label" class="form-control" placeholder="เช่น เซ็ตลดราคาส่งท้ายปี">
             </div>
-            <div class="col-md-4">
+            <div class="col-12 col-md-6 col-lg-4">
                 <label class="form-label"><i class="bi bi-image"></i> รูปปกชุดขาย (ไม่บังคับ, 1 รูป)</label>
                 <input type="file" name="bundle_cover" class="form-control" accept="image/jpeg,image/png,image/gif,image/webp">
                 <div id="bundleCoverPreview" class="mt-2" style="display:none;">
                     <img id="bundleCoverImg" src="" style="max-height:120px;border:1px solid #ddd;border-radius:6px;">
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-12 col-lg-4">
                 <div class="card border-primary p-3" id="previewBox" style="display:none;">
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <strong><i class="bi bi-eye"></i> ตัวอย่าง Bundle ที่จะจัด</strong>
                         <span id="previewStatus" class="badge bg-success">พร้อมจัด</span>
                     </div>
-                    <div class="row g-2">
-                        <div class="col-6 col-md-3">
+                    <div class="row g-2 text-center text-sm-start">
+                        <div class="col-6 col-sm-3 col-lg-6">
                             <div class="small text-muted">จำนวนเล่ม</div>
                             <div class="fs-5 fw-bold"><span id="previewCount">0</span> เล่ม</div>
                         </div>
-                        <div class="col-6 col-md-3">
+                        <div class="col-6 col-sm-3 col-lg-6">
                             <div class="small text-muted">จำนวนเรื่อง</div>
                             <div class="fs-5 fw-bold"><span id="previewTitles">0</span> เรื่อง</div>
                         </div>
-                        <div class="col-6 col-md-3">
+                        <div class="col-6 col-sm-3 col-lg-6">
                             <div class="small text-muted">ต้นทุนรวม</div>
                             <div class="fs-5 fw-bold text-primary"><span id="previewCost">0.00</span> ฿</div>
                         </div>
-                        <div class="col-6 col-md-3">
+                        <div class="col-6 col-sm-3 col-lg-6">
                             <div class="small text-muted">เล่มเฉลี่ย/ต้นทุน</div>
                             <div class="fs-5 fw-bold"><span id="previewAvg">0.00</span> ฿</div>
                         </div>
@@ -81,19 +81,19 @@
     <form method="POST" action="<?= BASE_URL ?>/index.php?url=stock/bundle" id="combineForm" enctype="multipart/form-data">
         <input type="hidden" name="action" value="combine">
         <div class="row g-2 align-items-end mb-2">
-            <div class="col-md-4">
+            <div class="col-12 col-sm-6 col-md-4">
                 <label class="form-label">ชื่อกลุ่ม (ไม่บังคับ)</label>
                 <input type="text" name="group_label" class="form-control" placeholder="เช่น เซ็ตรวม Naruto + One Piece">
             </div>
-            <div class="col-md-4">
+            <div class="col-12 col-sm-6 col-md-4">
                 <label class="form-label"><i class="bi bi-image"></i> รูปปกกลุ่ม (ไม่บังคับ)</label>
                 <input type="file" name="combine_cover" class="form-control" accept="image/jpeg,image/png,image/gif,image/webp">
             </div>
-            <div class="col-md-4">
-                <button type="submit" id="combineBtn" class="btn btn-warning" disabled>
+            <div class="col-12 col-md-4 mt-2 mt-md-0">
+                <button type="submit" id="combineBtn" class="btn btn-warning w-100 w-md-auto" disabled>
                     <i class="bi bi-box2-heart"></i> รวมชุดที่เลือกเป็นกลุ่มเดียว
                 </button>
-                <span class="text-muted small ms-2">เลือกอย่างน้อย 2 ชุด</span>
+                <div class="text-muted small mt-1">เลือกอย่างน้อย 2 ชุด</div>
             </div>
         </div>
         <div class="table-responsive">

@@ -10,18 +10,18 @@ $__username = htmlspecialchars($__old['username'] ?? '');
 <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
 <meta name="googlebot" content="noindex, nofollow, noarchive, nosnippet">
 <title>เข้าสู่ระบบ — <?= htmlspecialchars(APP_NAME) ?></title>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+Thai:wght@600;700&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 <style>
   :root {
-    --font-display: 'Noto Serif Thai', serif;
-    --font-body: 'Noto Sans Thai', system-ui, sans-serif;
-    --ink: #1f2937;
-    --paper: #f6f1e7;
-    --accent: #8b1e1e;
-    --accent-dark: #6b1414;
-    --line: #d8cfb8;
+    --font-display: 'Plus Jakarta Sans', 'Noto Sans Thai', system-ui, sans-serif;
+    --font-body: 'Noto Sans Thai', 'Plus Jakarta Sans', system-ui, sans-serif;
+    --ink: #0F172A;
+    --bg: #F1F5F9;
+    --primary: #2563EB;
+    --primary-hover: #1D4ED8;
+    --border: #E2E8F0;
   }
   * { box-sizing: border-box; }
   html, body { height: 100%; margin: 0; }
@@ -29,9 +29,9 @@ $__username = htmlspecialchars($__old['username'] ?? '');
     font-family: var(--font-body);
     color: var(--ink);
     background:
-      radial-gradient(1200px 600px at 10% 10%, rgba(139, 30, 30, 0.12), transparent 60%),
-      radial-gradient(1000px 500px at 90% 90%, rgba(31, 41, 55, 0.08), transparent 60%),
-      linear-gradient(135deg, #fbf6ea 0%, #f1e9d2 100%);
+      radial-gradient(1000px 500px at 10% 10%, rgba(37, 99, 235, 0.08), transparent 60%),
+      radial-gradient(900px 450px at 90% 90%, rgba(15, 23, 42, 0.05), transparent 60%),
+      linear-gradient(135deg, #F8FAFC 0%, #E2E8F0 100%);
     min-height: 100vh;
     display: flex;
     align-items: center;
@@ -41,71 +41,74 @@ $__username = htmlspecialchars($__old['username'] ?? '');
   .login-card {
     width: 100%;
     max-width: 420px;
-    background: #fffaf0;
-    border: 1px solid var(--line);
-    border-radius: 14px;
-    box-shadow: 0 20px 50px rgba(31, 41, 55, 0.15);
+    background: #FFFFFF;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    box-shadow: 0 12px 36px -4px rgba(15, 23, 42, 0.12);
     overflow: hidden;
   }
   .login-header {
-    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
-    color: #fff;
-    padding: 1.8rem 1.5rem;
+    background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%);
+    color: #FFFFFF;
+    padding: 2rem 1.5rem 1.6rem;
     text-align: center;
   }
   .login-header .seal {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 64px; height: 64px;
-    border: 2px solid rgba(255,255,255,.4);
-    border-radius: 12px;
-    background: rgba(255,255,255,.08);
+    width: 58px; height: 58px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%);
     font-family: var(--font-display);
-    font-size: 2.2rem;
-    margin-bottom: .75rem;
+    font-size: 1.85rem;
+    font-weight: 800;
+    margin-bottom: 0.85rem;
+    color: #FFFFFF;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
   }
   .login-header h1 {
     font-family: var(--font-display);
-    font-size: 1.4rem;
+    font-size: 1.35rem;
     margin: 0;
     font-weight: 700;
   }
   .login-header p {
-    margin: .25rem 0 0;
-    opacity: .9;
-    font-size: .9rem;
+    margin: 0.25rem 0 0;
+    color: #94A3B8;
+    font-size: 0.88rem;
   }
   .login-body {
     padding: 1.75rem 1.5rem 1.5rem;
   }
-  .form-floating > label { color: #8a7c5d; }
+  .form-floating > label { color: #64748B; font-size: 0.9rem; }
   .form-control:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 .2rem rgba(139, 30, 30, .15);
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
   }
   .btn-primary {
-    background: var(--accent);
-    border-color: var(--accent);
+    background: var(--primary);
+    border-color: var(--primary);
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
   }
   .btn-primary:hover, .btn-primary:focus {
-    background: var(--accent-dark);
-    border-color: var(--accent-dark);
+    background: var(--primary-hover);
+    border-color: var(--primary-hover);
   }
   .role-hint {
-    background: #fff4e0;
-    border: 1px dashed #d4a83a;
-    border-radius: 8px;
-    padding: .6rem .75rem;
-    font-size: .82rem;
-    color: #6b5a25;
-    margin-top: 1rem;
+    background: #EFF6FF;
+    border: 1px solid #BFDBFE;
+    border-radius: 10px;
+    padding: 0.75rem 0.85rem;
+    font-size: 0.82rem;
+    color: #1E40AF;
+    margin-top: 1.15rem;
   }
-  .role-hint strong { color: var(--accent); }
+  .role-hint strong { color: #1D4ED8; }
   .footer-credit {
     text-align: center;
-    color: #8a7c5d;
-    font-size: .8rem;
+    color: #94A3B8;
+    font-size: 0.8rem;
     margin-top: 1.25rem;
   }
 </style>

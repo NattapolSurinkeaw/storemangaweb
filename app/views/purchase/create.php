@@ -229,16 +229,16 @@ const PURCHASE_PREFILL = <?= json_encode(!empty($editing) ? $editing['items'] : 
 
 <template id="rangeTemplate">
     <div class="row g-2 align-items-center mb-2 range-row">
-        <div class="col-auto"><span class="text-muted">เล่ม</span></div>
-        <div class="col-2">
+        <div class="col-auto"><span class="text-muted small">เล่ม</span></div>
+        <div class="col-4 col-sm-3 col-md-2">
             <input type="number" name="items[__ITEM_INDEX__][ranges][__RANGE_INDEX__][start]" class="form-control range-start" min="1" placeholder="เริ่ม" required>
         </div>
-        <div class="col-auto"><span class="text-muted">ถึง</span></div>
-        <div class="col-2">
+        <div class="col-auto"><span class="text-muted small">ถึง</span></div>
+        <div class="col-4 col-sm-3 col-md-2">
             <input type="number" name="items[__ITEM_INDEX__][ranges][__RANGE_INDEX__][end]" class="form-control range-end" min="1" placeholder="สุดท้าย" required>
         </div>
         <div class="col-auto small text-muted">(<span class="range-qty">0</span> เล่ม)</div>
-        <div class="col-auto">
+        <div class="col-auto ms-auto ms-sm-0">
             <button type="button" class="btn btn-sm btn-outline-danger removeRangeBtn"><i class="bi bi-x"></i></button>
         </div>
     </div>

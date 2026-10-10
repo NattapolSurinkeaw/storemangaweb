@@ -35,7 +35,7 @@
 
         <?php if (empty($editing)): ?>
         <div class="row g-3 mb-3">
-            <div class="col-md-3">
+            <div class="col-12 col-sm-6 col-lg-3">
                 <label class="form-label">ประเภทสินค้า</label>
                 <select id="refType" name="ref_type" class="form-select" required>
                     <option value="book">เล่มเดี่ยว / เศษเล่ม</option>
@@ -43,11 +43,11 @@
                     <option value="bundle_group">กลุ่มขายรวม (Bundle Group)</option>
                 </select>
             </div>
-            <div class="col-md-5">
+            <div class="col-12 col-sm-6 col-lg-5">
                 <label class="form-label">เลือกสินค้า</label>
                 <select id="refId" name="ref_id" class="form-select" required></select>
             </div>
-            <div class="col-md-4">
+            <div class="col-12 col-lg-4">
                 <label class="form-label">ต้นทุนรวมของสินค้าที่เลือก</label>
                 <input type="text" id="costDisplay" class="form-control" value="0.00" readonly>
             </div>
@@ -86,25 +86,25 @@
                        value="<?= !empty($editing) ? htmlspecialchars($editing['fee_amount']) : '0' ?>">
             </div>
             <?php if (empty($editing)): ?>
-            <div class="col-md-3">
+            <div class="col-12 col-sm-6 col-md-3">
                 <label class="form-label">โหมดคำนวณ</label>
                 <select id="calcMode" class="form-select">
                     <option value="by_target_price">ระบุราคาขาย -&gt; หากำไร</option>
                     <option value="by_target_profit">ระบุ % กำไรที่ต้องการ -&gt; หาราคาขาย</option>
                 </select>
             </div>
-            <div class="col-md-2">
+            <div class="col-8 col-sm-6 col-md-2">
                 <label class="form-label" id="calcValueLabel">ราคาขาย (บาท)</label>
                 <input type="number" step="0.01" id="calcValue" class="form-control" value="0">
             </div>
-            <div class="col-md-2 d-flex align-items-end">
+            <div class="col-4 col-sm-12 col-md-2 d-flex align-items-end">
                 <button type="button" id="calcBtn" class="btn btn-outline-primary w-100"><i class="bi bi-calculator"></i> คำนวณ</button>
             </div>
             <?php endif; ?>
         </div>
 
         <?php if (empty($editing)): ?>
-        <div class="row g-3 mb-3" id="resultBox" style="display:none;">
+        <div class="row g-2 g-md-3 mb-3" id="resultBox" style="display:none;">
             <div class="col-6 col-md-3"><div class="card p-2 text-center"><div class="small text-muted">ราคาขาย</div><div class="fw-bold font-mono" id="resSalePrice">-</div></div></div>
             <div class="col-6 col-md-3"><div class="card p-2 text-center"><div class="small text-muted">ค่าธรรมเนียม</div><div class="fw-bold font-mono text-danger" id="resFee">-</div></div></div>
             <div class="col-6 col-md-3"><div class="card p-2 text-center"><div class="small text-muted">รายรับสุทธิ</div><div class="fw-bold font-mono" id="resNet">-</div></div></div>
@@ -113,12 +113,12 @@
         <?php endif; ?>
 
         <div class="row g-3 mb-3">
-            <div class="col-md-3">
+            <div class="col-12 col-sm-6 col-md-3">
                 <label class="form-label">ราคาขายที่จะบันทึก (บาท)</label>
                 <input type="number" step="0.01" name="sale_price" id="finalSalePrice" class="form-control"
                        value="<?= !empty($editing) ? htmlspecialchars($editing['sale_price']) : '' ?>" required>
             </div>
-            <div class="col-md-3">
+            <div class="col-12 col-sm-6 col-md-3">
                 <label class="form-label">วันที่ขาย</label>
                 <input type="date" name="sale_date" class="form-control"
                        value="<?= !empty($editing) ? htmlspecialchars($editing['sale_date']) : date('Y-m-d') ?>" required>

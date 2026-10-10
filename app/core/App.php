@@ -41,12 +41,13 @@ class App
                 $this->redirectTo(BASE_URL . '/index.php?url=login');
             }
 
-            // ถ้าเป็น write method ต้องเป็น admin เท่านั้น
+            // ถ้าเป็น write method ต้องเป็น admin เท่านั้น (ยกเว้น Profile สำหรับแก้ไขข้อมูลส่วนตัว/รหัสผ่านของตนเอง)
             $method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
             $writeMethods = ['POST', 'PUT', 'PATCH', 'DELETE'];
             if (in_array($method, $writeMethods, true)) {
                 $role = $_SESSION['role'] ?? '';
-                if ($role !== 'admin') {
+                $isSelfProfile = ($this->controllerName === 'Profile');
+                if ($role !== 'admin' && !$isSelfProfile) {
                     http_response_code(403);
                     $isAjax = (
                         (($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'XMLHttpRequest')
