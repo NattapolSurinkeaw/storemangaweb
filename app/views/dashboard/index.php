@@ -1,6 +1,11 @@
-<div class="page-title">
-    <i class="bi bi-speedometer2"></i>
-    <h3>Dashboard สรุปภาพรวม</h3>
+<div class="page-title d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-speedometer2"></i>
+        <h3 class="mb-0">Dashboard สรุปภาพรวม</h3>
+    </div>
+    <a href="<?= BASE_URL ?>/index.php?url=report" class="btn btn-primary btn-sm">
+        <i class="bi bi-bar-chart-line me-1"></i> ดูรายงานซื้อ-ขายพร้อมกราฟ
+    </a>
 </div>
 
 <div class="row g-3 mb-4">

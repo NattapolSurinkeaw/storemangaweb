@@ -18,6 +18,7 @@ $__navItems = [
     ['url' => 'stock',            'icon' => 'bi-boxes',        'label' => 'สต็อก',           'short' => 'สต็อก',    'match' => 'stock', 'exact' => 'stock'],
     ['url' => 'stock/bundle',     'icon' => 'bi-collection',   'label' => 'จัดชุดขาย',       'short' => 'จัดชุด',   'match' => 'stock/bundle', 'exact' => 'stock/bundle', 'admin' => true],
     ['url' => 'sales/create',     'icon' => 'bi-cash-coin',    'label' => 'บันทึกขาย',       'short' => 'ขาย',      'match' => 'sales'],
+    ['url' => 'report',           'icon' => 'bi-bar-chart-line', 'label' => 'รายงานซื้อ-ขาย', 'short' => 'รายงาน',   'match' => 'report'],
 ];
 
 $__navItems = array_values(array_filter($__navItems, function ($it) use ($__isAdmin) {
