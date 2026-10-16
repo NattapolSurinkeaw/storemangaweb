@@ -1,3 +1,61 @@
+<style>
+.searchable-select-wrap {
+    position: relative;
+}
+.searchable-select-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 1050;
+    background: #fff;
+    border: 1px solid #ced4da;
+    border-radius: 0.375rem;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    max-height: 320px;
+    overflow-y: auto;
+    margin-top: 2px;
+    display: none;
+}
+.searchable-group-header {
+    padding: 0.35rem 0.75rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    background: #f8f9fa;
+    color: #6c757d;
+    border-top: 1px solid #e9ecef;
+    border-bottom: 1px solid #e9ecef;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+.searchable-group-header:first-child {
+    border-top: none;
+}
+.searchable-select-item {
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+    font-size: 0.92rem;
+    border-bottom: 1px solid #f1f3f5;
+    transition: background-color 0.15s ease-in-out;
+}
+.searchable-select-item:last-child {
+    border-bottom: none;
+}
+.searchable-select-item:hover,
+.searchable-select-item.active {
+    background-color: #e9ecef;
+}
+.searchable-select-empty {
+    padding: 0.75rem;
+    color: #6c757d;
+    text-align: center;
+    font-size: 0.9rem;
+}
+</style>
+
 <div class="page-title">
     <i class="bi bi-cash-coin"></i>
     <h3>
@@ -34,18 +92,27 @@
         <?php endif; ?>
 
         <?php if (empty($editing)): ?>
+        <input type="hidden" id="refType" name="ref_type" value="book">
+        <input type="hidden" id="refId" name="ref_id" value="">
         <div class="row g-3 mb-3">
-            <div class="col-12 col-sm-6 col-lg-3">
-                <label class="form-label">ประเภทสินค้า</label>
-                <select id="refType" name="ref_type" class="form-select" required>
-                    <option value="book">เล่มเดี่ยว / เศษเล่ม</option>
-                    <option value="bundle">ชุด (Bundle)</option>
-                    <option value="bundle_group">กลุ่มขายรวม (Bundle Group)</option>
-                </select>
-            </div>
-            <div class="col-12 col-sm-6 col-lg-5">
-                <label class="form-label">เลือกสินค้า</label>
-                <select id="refId" name="ref_id" class="form-select" required></select>
+            <div class="col-12 col-lg-8">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                    <label class="form-label fw-semibold mb-0">เลือกสินค้า</label>
+                    <div class="btn-group btn-group-sm" role="group" id="categoryFilterGroup">
+                        <button type="button" class="btn btn-outline-primary active" data-filter="all">ทั้งหมด</button>
+                        <button type="button" class="btn btn-outline-secondary" data-filter="เศษเล่ม">เศษเล่ม</button>
+                        <button type="button" class="btn btn-outline-info text-dark" data-filter="ชุด">ชุด</button>
+                        <button type="button" class="btn btn-outline-warning text-dark" data-filter="รวมกลุ่ม">รวมกลุ่ม</button>
+                    </div>
+                </div>
+                <div class="searchable-select-wrap">
+                    <div class="input-group">
+                        <span class="input-group-text bg-white text-muted"><i class="bi bi-search"></i></span>
+                        <input type="text" id="productSearchInput" class="form-control" placeholder="พิมพ์ค้นหาชื่อเรื่อง, เล่ม หรือชุดขาย..." autocomplete="off" required>
+                        <button class="btn btn-outline-secondary dropdown-toggle dropdown-toggle-split" type="button" id="toggleProductMenuBtn" tabindex="-1" title="แสดงรายการทั้งหมด"></button>
+                    </div>
+                    <div class="searchable-select-menu shadow" id="productMenu"></div>
+                </div>
             </div>
             <div class="col-12 col-lg-4">
                 <label class="form-label">ต้นทุนรวมของสินค้าที่เลือก</label>
@@ -259,39 +326,222 @@ shopeeFeeAmount.addEventListener('input', function () {
     recalcShopeePercentFromAmount();
 });
 
-function populateOptions() {
-    refId.innerHTML = '';
-    let list;
-    if (refType.value === 'book') list = availableBooks;
-    else if (refType.value === 'bundle') list = availableBundles;
-    else list = availableBundleGroups;
+const productSearchInput = document.getElementById('productSearchInput');
+const productMenu = document.getElementById('productMenu');
+const toggleProductMenuBtn = document.getElementById('toggleProductMenuBtn');
 
-    list.forEach(item => {
-        const opt = document.createElement('option');
-        opt.value = item.id;
-        if (refType.value === 'book') {
-            opt.textContent = `${item.title} เล่ม ${item.volume} (ต้นทุน ${parseFloat(item.unit_cost).toFixed(2)} ฿)`;
-            opt.dataset.cost = item.unit_cost;
-        } else if (refType.value === 'bundle') {
-            opt.textContent = `${item.title} ชุดเล่ม ${item.volume_start}-${item.volume_end} (ต้นทุน ${parseFloat(item.total_cost).toFixed(2)} ฿)`;
-            opt.dataset.cost = item.total_cost;
-        } else {
-            const label = item.label || `กลุ่มขายรวม #${item.id}`;
-            opt.textContent = `[กลุ่ม] ${label} (${item.bundle_count} เรื่อง, ${item.book_count} เล่ม, ต้นทุน ${parseFloat(item.total_cost).toFixed(2)} ฿)`;
-            opt.dataset.cost = item.total_cost;
-        }
-        refId.appendChild(opt);
+// รวบรวมสินค้าทั้งหมด พร้อมจัดหมวดหมู่
+const allProducts = [];
+
+// 1. เล่มเดี่ยว / เศษเล่ม
+availableBooks.forEach(b => {
+    allProducts.push({
+        type: 'book',
+        category: 'เศษเล่ม',
+        categoryBadge: 'bg-secondary',
+        id: b.id,
+        title: `${b.title} เล่ม ${b.volume}`,
+        searchKey: `${b.title} เล่ม ${b.volume} เศษ เล่มเดี่ยว ${b.id}`.toLowerCase(),
+        cost: parseFloat(b.unit_cost) || 0,
+        desc: `เล่มเดี่ยว | ID: #${b.id}`
     });
-    updateCost();
+});
+
+// 2. ชุด (Bundle)
+availableBundles.forEach(b => {
+    allProducts.push({
+        type: 'bundle',
+        category: 'ชุด',
+        categoryBadge: 'bg-info text-dark',
+        id: b.id,
+        title: `${b.title} ชุดเล่ม ${b.volume_start}-${b.volume_end}`,
+        searchKey: `${b.title} ชุด เล่ม ${b.volume_start}-${b.volume_end} bundle ${b.id}`.toLowerCase(),
+        cost: parseFloat(b.total_cost) || 0,
+        desc: `ชุด ${b.book_count} เล่ม | Bundle #${b.id}`
+    });
+});
+
+// 3. รวมกลุ่ม (Bundle Group)
+availableBundleGroups.forEach(g => {
+    let name = g.label ? g.label : `กลุ่มขายรวม #${g.id}`;
+    if (g.titles_summary) {
+        name += ` (${g.titles_summary.split('||').join(', ')})`;
+    } else if (g.titles_only) {
+        name += ` (${g.titles_only})`;
+    }
+    allProducts.push({
+        type: 'bundle_group',
+        category: 'รวมกลุ่ม',
+        categoryBadge: 'bg-warning text-dark',
+        id: g.id,
+        title: name,
+        searchKey: `${name} กลุ่ม รวมกลุ่ม bundle group ${g.id}`.toLowerCase(),
+        cost: parseFloat(g.total_cost) || 0,
+        desc: `รวม ${g.bundle_count} เรื่อง (${g.book_count} เล่ม) | Group #${g.id}`
+    });
+});
+
+let currentCategoryFilter = 'all';
+
+function escapeHtml(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
-function updateCost() {
-    const opt = refId.options[refId.selectedIndex];
-    costDisplay.value = opt ? parseFloat(opt.dataset.cost).toFixed(2) : '0.00';
+function renderProductMenu(query = '') {
+    if (!productMenu) return;
+    const q = query.trim().toLowerCase();
+    const filtered = allProducts.filter(p => {
+        const matchCategory = (currentCategoryFilter === 'all' || p.category === currentCategoryFilter);
+        const matchQuery = (!q || p.searchKey.includes(q));
+        return matchCategory && matchQuery;
+    });
+
+    if (filtered.length === 0) {
+        productMenu.innerHTML = '<div class="searchable-select-empty"><i class="bi bi-exclamation-circle me-1"></i>ไม่พบสินค้าที่ตรงกับการค้นหา</div>';
+        productMenu.style.display = 'block';
+        return;
+    }
+
+    // จัดกลุ่มตามหมวดหมู่: เศษเล่ม, ชุด, รวมกลุ่ม
+    const groups = [
+        { name: 'เศษเล่ม', badge: 'bg-secondary', items: [] },
+        { name: 'ชุด', badge: 'bg-info text-dark', items: [] },
+        { name: 'รวมกลุ่ม', badge: 'bg-warning text-dark', items: [] }
+    ];
+
+    filtered.forEach(item => {
+        const g = groups.find(x => x.name === item.category);
+        if (g) g.items.push(item);
+    });
+
+    let html = '';
+    groups.forEach(g => {
+        if (g.items.length === 0) return;
+        html += `<div class="searchable-group-header d-flex justify-content-between align-items-center">
+                    <span>${g.name}</span>
+                    <span class="badge ${g.badge} py-0">${g.items.length} รายการ</span>
+                 </div>`;
+        g.items.forEach(item => {
+            const isSelected = (refType.value === item.type && String(refId.value) === String(item.id));
+            html += `
+                <div class="searchable-select-item ${isSelected ? 'active' : ''}"
+                     data-type="${item.type}"
+                     data-id="${item.id}"
+                     data-cost="${item.cost}"
+                     data-title="${escapeHtml(item.title)}">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="me-2 text-truncate">
+                            <span class="badge ${item.categoryBadge} me-1" style="font-size:0.75rem;">${item.category}</span>
+                            <strong>${escapeHtml(item.title)}</strong>
+                        </div>
+                        <div class="text-end text-nowrap">
+                            <span class="text-primary fw-bold font-mono">${item.cost.toFixed(2)} ฿</span>
+                        </div>
+                    </div>
+                    <div class="small text-muted ps-1 mt-1">${escapeHtml(item.desc)}</div>
+                </div>
+            `;
+        });
+    });
+
+    productMenu.innerHTML = html;
+    productMenu.style.display = 'block';
+
+    productMenu.querySelectorAll('.searchable-select-item').forEach(el => {
+        el.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            selectProduct(el.dataset.type, el.dataset.id, el.dataset.title, el.dataset.cost);
+        });
+    });
 }
 
-refType.addEventListener('change', populateOptions);
-refId.addEventListener('change', updateCost);
+function selectProduct(type, id, title, cost) {
+    refType.value = type;
+    refId.value = id;
+    if (productSearchInput) {
+        productSearchInput.value = title;
+    }
+    costDisplay.value = parseFloat(cost || 0).toFixed(2);
+    if (productMenu) productMenu.style.display = 'none';
+}
+
+if (productSearchInput) {
+    productSearchInput.addEventListener('focus', () => {
+        renderProductMenu(productSearchInput.value);
+    });
+
+    productSearchInput.addEventListener('input', () => {
+        renderProductMenu(productSearchInput.value);
+        if (refId.value) {
+            // หากกำลังพิมพ์แก้ไขข้อความที่เลือกไว้
+            const cur = allProducts.find(p => p.type === refType.value && String(p.id) === String(refId.value));
+            if (cur && cur.title !== productSearchInput.value) {
+                refId.value = '';
+                costDisplay.value = '0.00';
+            }
+        }
+    });
+
+    productSearchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            if (productMenu) productMenu.style.display = 'none';
+        }
+    });
+}
+
+// คลิกข้างนอกกล่องให้ปิดเมนู และคืนค่าข้อความสินค้าที่เลือกไว้
+document.addEventListener('click', (e) => {
+    const wrap = document.querySelector('.searchable-select-wrap');
+    const categoryGroup = document.getElementById('categoryFilterGroup');
+    if (!wrap) return;
+
+    if (!wrap.contains(e.target) && (!categoryGroup || !categoryGroup.contains(e.target))) {
+        if (productMenu) productMenu.style.display = 'none';
+        if (productSearchInput) {
+            if (!refId.value) {
+                productSearchInput.value = '';
+                costDisplay.value = '0.00';
+            } else {
+                const cur = allProducts.find(p => p.type === refType.value && String(p.id) === String(refId.value));
+                if (cur) productSearchInput.value = cur.title;
+            }
+        }
+    }
+});
+
+if (toggleProductMenuBtn) {
+    toggleProductMenuBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (productMenu && productMenu.style.display === 'block') {
+            productMenu.style.display = 'none';
+        } else {
+            renderProductMenu(productSearchInput ? productSearchInput.value : '');
+            if (productSearchInput) productSearchInput.focus();
+        }
+    });
+}
+
+// ปุ่มกรองหมวดหมู่ (ทั้งหมด, เศษเล่ม, ชุด, รวมกลุ่ม)
+const categoryButtons = document.querySelectorAll('#categoryFilterGroup button[data-filter]');
+categoryButtons.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        categoryButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentCategoryFilter = btn.dataset.filter;
+        renderProductMenu(productSearchInput ? productSearchInput.value : '');
+        if (productSearchInput) productSearchInput.focus();
+    });
+});
+
+// ตอนโหลดหน้า ให้ช่องค้นหาว่างไว้ (ไม่มีค่าเริ่มต้น)
+refId.value = '';
+refType.value = '';
+if (productSearchInput) {
+    productSearchInput.value = '';
+}
+costDisplay.value = '0.00';
 
 channel.addEventListener('change', function () {
     const opt = channel.options[channel.selectedIndex];
@@ -339,14 +589,19 @@ document.getElementById('calcBtn').addEventListener('click', function () {
         });
 });
 
-// ตอน submit: สำหรับ Shopee ให้ใช้ค่าจาก shopeeFeeAmount (ไม่ใช่ shippingFee)
+// ตอน submit: ตรวจสอบการเลือกสินค้า และสำหรับ Shopee ให้ใช้ค่าจาก shopeeFeeAmount
 document.getElementById('saleForm').addEventListener('submit', function (e) {
+    if (!refId.value) {
+        e.preventDefault();
+        alert('กรุณาเลือกสินค้าที่ต้องการขาย');
+        if (productSearchInput) productSearchInput.focus();
+        return;
+    }
     if (channel.value === 'shopee') {
         shippingFee.value = parseFloat(shopeeFeeAmount.value) || 0;
     }
 });
 
-populateOptions();
 applyChannelUI();
 
 <?php if (!empty($editing)): ?>

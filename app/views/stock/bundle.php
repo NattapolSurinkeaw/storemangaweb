@@ -195,10 +195,25 @@
                         <?php endif; ?>
                     </td>
                     <td data-label="เรื่อง">
-                        <div class="fw-semibold"><?= htmlspecialchars($g['label'] ?? 'กลุ่มขายรวม') ?></div>
-                        <div class="small text-muted"><?= (int)$g['bundle_count'] ?> เรื่อง</div>
+                        <?php if (!empty($g['label'])): ?>
+                            <div class="fw-semibold text-primary mb-1">
+                                <?= htmlspecialchars($g['label']) ?>
+                            </div>
+                        <?php endif; ?>
+                        <?php if (!empty($g['titles_summary'])): ?>
+                            <?php $titleList = explode('||', $g['titles_summary']); ?>
+                            <div class="d-flex flex-column gap-1">
+                                <?php foreach ($titleList as $tItem): ?>
+                                    <div class="fw-medium text-dark">
+                                        <i class="bi bi-journal-bookmark me-1 text-primary"></i><?= htmlspecialchars(trim($tItem)) ?>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
                     </td>
-                    <td data-label="ช่วงเล่ม"><span class="badge bg-info text-dark">รวมหลายเรื่อง</span></td>
+                    <td data-label="ช่วงเล่ม">
+                        <span class="badge bg-info text-dark">รวมหลายเรื่อง</span>
+                    </td>
                     <td data-label="จำนวนเล่ม"><?= (int)$g['book_count'] ?></td>
                     <td data-label="ต้นทุนรวม"><?= number_format((float)$g['total_cost'], 2) ?> ฿</td>
                     <td data-label="ต้นทุน/เล่ม" class="text-muted"><?= $g['book_count'] > 0 ? number_format((float)$g['total_cost'] / $g['book_count'], 2) : '0.00' ?> ฿</td>

@@ -52,7 +52,14 @@ abstract class Controller
 
     protected function redirect(string $url): void
     {
-        header('Location: ' . BASE_URL . '/' . ltrim($url, '/'));
+        $url = ltrim($url, '/');
+        // ถ้าระบุ url ที่ยังไม่ได้ขึ้นต้นด้วย index.php ให้ redirect ไปที่ index.php?url=...
+        if (!str_starts_with($url, 'index.php') && !str_starts_with($url, 'http://') && !str_starts_with($url, 'https://')) {
+            $dest = BASE_URL . '/index.php?url=' . $url;
+        } else {
+            $dest = BASE_URL . '/' . $url;
+        }
+        header('Location: ' . $dest);
         exit;
     }
 

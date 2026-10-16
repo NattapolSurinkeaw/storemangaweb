@@ -284,7 +284,7 @@ class BundleModel extends Model
         return $stmt->fetchAll();
     }
 
-    /** รายการ bundle_groups ที่พร้อมขาย (รวม cover_image จาก bundle แรกในกลุ่ม) */
+    /** รายการ bundle_groups ที่พร้อมขาย (รวม cover_image จาก bundle แรกในกลุ่ม และรายชื่อเรื่องทั้งหมด) */
     public function getAvailableBundleGroups(): array
     {
         $stmt = $this->db->query(
@@ -293,7 +293,13 @@ class BundleModel extends Model
                      FROM bundles b
                      WHERE b.group_id = g.id AND b.cover_image IS NOT NULL
                      ORDER BY b.volume_start ASC, b.id ASC
-                     LIMIT 1) AS cover_image
+                     LIMIT 1) AS cover_image,
+                    (SELECT GROUP_CONCAT(CONCAT(b.title, ' (เล่ม ', b.volume_start, '-', b.volume_end, ')') ORDER BY b.title ASC SEPARATOR '||')
+                     FROM bundles b
+                     WHERE b.group_id = g.id) AS titles_summary,
+                    (SELECT GROUP_CONCAT(DISTINCT b.title ORDER BY b.title ASC SEPARATOR ', ')
+                     FROM bundles b
+                     WHERE b.group_id = g.id) AS titles_only
              FROM bundle_groups g
              WHERE g.status = 'available'
              ORDER BY g.id DESC"
