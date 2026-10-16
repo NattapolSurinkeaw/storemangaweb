@@ -4,14 +4,27 @@
 </div>
 
 <div class="card p-4 mb-4">
-    <div class="panel-title"><i class="bi bi-journal-bookmark"></i> สรุปตามเรื่อง</div>
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+        <div class="panel-title mb-0"><i class="bi bi-journal-bookmark"></i> สรุปตามเรื่อง</div>
+        <div class="d-flex align-items-center gap-2" style="max-width: 360px; width: 100%;">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-white border-end-0 text-muted">
+                    <i class="bi bi-search"></i>
+                </span>
+                <input type="text" id="stockSearchInput" class="form-control border-start-0 ps-0" placeholder="ค้นหาชื่อเรื่อง..." autocomplete="off">
+                <button class="btn btn-outline-secondary border-start-0" type="button" id="clearSearchBtn" style="display: none;" title="ล้างการค้นหา">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+        </div>
+    </div>
     <div class="table-responsive">
-        <table class="table table-sm table-hover table-flex-mobile">
+        <table class="table table-sm table-hover table-flex-mobile" id="stockSummaryTable">
             <thead><tr><th>เรื่อง</th><th>เล่มที่มี (available)</th><th>จำนวน</th><th>ต้นทุนรวม</th><th></th></tr></thead>
             <tbody>
             <?php foreach ($stockSummary as $s): ?>
-                <tr>
-                    <td><?= htmlspecialchars($s['title']) ?></td>
+                <tr class="stock-item-row" data-title="<?= htmlspecialchars(mb_strtolower($s['title'], 'UTF-8')) ?>">
+                    <td class="stock-title"><?= htmlspecialchars($s['title']) ?></td>
                     <td><?= $s['min_volume'] ?> - <?= $s['max_volume'] ?></td>
                     <td><?= $s['available_count'] ?></td>
                     <td><?= number_format($s['total_cost'], 2) ?> ฿</td>
@@ -22,6 +35,11 @@
                     </td>
                 </tr>
             <?php endforeach; ?>
+            <tr id="noSearchMatchRow" style="display: none;">
+                <td colspan="5" class="text-center text-muted py-4">
+                    <i class="bi bi-search me-1"></i> ไม่พบชื่อเรื่องที่ตรงกับการค้นหา
+                </td>
+            </tr>
             <?php if (empty($stockSummary)): ?>
                 <tr><td colspan="5" class="text-center text-muted">ยังไม่มีสต็อก</td></tr>
             <?php endif; ?>
@@ -98,3 +116,47 @@
     <?php endif; ?>
 </div>
 <?php endif; ?>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const searchInput = document.getElementById('stockSearchInput');
+    const clearBtn = document.getElementById('clearSearchBtn');
+    const rows = document.querySelectorAll('#stockSummaryTable tbody tr.stock-item-row');
+    const noMatchRow = document.getElementById('noSearchMatchRow');
+
+    if (!searchInput) return;
+
+    function filterStock() {
+        const query = searchInput.value.trim().toLowerCase();
+        let visibleCount = 0;
+
+        if (clearBtn) {
+            clearBtn.style.display = query !== '' ? 'inline-block' : 'none';
+        }
+
+        rows.forEach(row => {
+            const title = row.getAttribute('data-title') || '';
+            if (query === '' || title.includes(query)) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        if (noMatchRow) {
+            noMatchRow.style.display = (visibleCount === 0 && rows.length > 0) ? '' : 'none';
+        }
+    }
+
+    searchInput.addEventListener('input', filterStock);
+
+    if (clearBtn) {
+        clearBtn.addEventListener('click', function () {
+            searchInput.value = '';
+            filterStock();
+            searchInput.focus();
+        });
+    }
+});
+</script>

@@ -3,6 +3,49 @@
     <h3>จัดชุดขาย <span class="subtitle">(Create Bundle)</span></h3>
 </div>
 
+<style>
+.searchable-select-wrap {
+    position: relative;
+}
+.searchable-select-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 1050;
+    background: #fff;
+    border: 1px solid #ced4da;
+    border-radius: 0.375rem;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    max-height: 250px;
+    overflow-y: auto;
+    margin-top: 2px;
+    display: none;
+}
+.searchable-select-item {
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+    font-size: 0.95rem;
+    border-bottom: 1px solid #f1f3f5;
+    transition: background-color 0.15s ease-in-out;
+}
+.searchable-select-item:last-child {
+    border-bottom: none;
+}
+.searchable-select-item:hover,
+.searchable-select-item.active {
+    background-color: #e9ecef;
+    color: #0d6efd;
+    font-weight: 500;
+}
+.searchable-select-empty {
+    padding: 0.75rem;
+    color: #6c757d;
+    text-align: center;
+    font-size: 0.9rem;
+}
+</style>
+
 <div class="card p-4 mb-4">
     <form method="POST" action="<?= BASE_URL ?>/index.php?url=stock/bundle" id="bundleForm" enctype="multipart/form-data">
         <div class="d-flex justify-content-between align-items-center mb-3">
@@ -251,9 +294,6 @@ const rowsByIndex = new Map(); // index -> {titleEl, vsEl, veEl, previewEl, avai
 
 /* =================== Multi-row form =================== */
 
-function titleOptions() {
-    return TITLES.map(t => `<option value="">-- เลือกเรื่อง --</option><option value="${escapeAttr(t)}">${escapeHtml(t)}</option>`).join('');
-}
 function escapeHtml(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function escapeAttr(s) { return escapeHtml(s); }
 
@@ -265,9 +305,15 @@ function addRow() {
     row.innerHTML = `
         <div class="col-md-4">
             <label class="form-label d-md-none">เรื่อง</label>
-            <select class="form-select item-title" required>
-                ${titleOptions()}
-            </select>
+            <div class="searchable-select-wrap">
+                <div class="input-group">
+                    <span class="input-group-text bg-white text-muted"><i class="bi bi-search"></i></span>
+                    <input type="text" class="form-control item-title-search" placeholder="พิมพ์ค้นหาเรื่อง..." autocomplete="off" required>
+                    <button class="btn btn-outline-secondary dropdown-toggle dropdown-toggle-split toggle-menu-btn" type="button" tabindex="-1" title="แสดงรายการทั้งหมด"></button>
+                </div>
+                <input type="hidden" class="item-title" value="">
+                <div class="searchable-select-menu shadow"></div>
+            </div>
         </div>
         <div class="col-md-3">
             <label class="form-label d-md-none">เล่มเริ่ม</label>
@@ -289,16 +335,82 @@ function addRow() {
     `;
     itemsArea.appendChild(row);
 
-    const titleEl = row.querySelector('.item-title');
-    const vsEl    = row.querySelector('.item-vs');
-    const veEl    = row.querySelector('.item-ve');
-    const chipsEl = row.querySelector('.item-chips-area');
-    const previewEl = row.querySelector('.item-preview');
-    const removeBtn = row.querySelector('.remove-row-btn');
+    const titleSearchEl = row.querySelector('.item-title-search');
+    const titleEl       = row.querySelector('.item-title');
+    const menuEl        = row.querySelector('.searchable-select-menu');
+    const toggleBtn     = row.querySelector('.toggle-menu-btn');
+    const vsEl          = row.querySelector('.item-vs');
+    const veEl          = row.querySelector('.item-ve');
+    const chipsEl       = row.querySelector('.item-chips-area');
+    const previewEl     = row.querySelector('.item-preview');
+    const removeBtn     = row.querySelector('.remove-row-btn');
 
-    rowsByIndex.set(idx, { titleEl, vsEl, veEl, chipsEl, previewEl, availableMap: {} });
+    rowsByIndex.set(idx, { titleEl, titleSearchEl, vsEl, veEl, chipsEl, previewEl, availableMap: {} });
 
-    titleEl.addEventListener('change', () => onTitleChange(idx));
+    function renderMenu(query = '') {
+        const q = query.trim().toLowerCase();
+        const filtered = TITLES.filter(t => !q || t.toLowerCase().includes(q));
+        if (filtered.length === 0) {
+            menuEl.innerHTML = '<div class="searchable-select-empty"><i class="bi bi-exclamation-circle me-1"></i>ไม่พบชื่อเรื่อง</div>';
+        } else {
+            menuEl.innerHTML = filtered.map(t => `<div class="searchable-select-item" data-value="${escapeAttr(t)}">${escapeHtml(t)}</div>`).join('');
+            menuEl.querySelectorAll('.searchable-select-item').forEach(item => {
+                item.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    selectTitle(item.dataset.value);
+                });
+            });
+        }
+        menuEl.style.display = 'block';
+    }
+
+    function selectTitle(val) {
+        titleSearchEl.value = val;
+        titleEl.value = val;
+        menuEl.style.display = 'none';
+        onTitleChange(idx);
+    }
+
+    titleSearchEl.addEventListener('focus', () => {
+        renderMenu(titleSearchEl.value);
+    });
+
+    titleSearchEl.addEventListener('input', () => {
+        renderMenu(titleSearchEl.value);
+        if (titleEl.value && titleSearchEl.value !== titleEl.value) {
+            titleEl.value = '';
+            onTitleChange(idx);
+        }
+    });
+
+    titleSearchEl.addEventListener('blur', () => {
+        // ซ่อนเมื่อคลิกข้างนอก
+        setTimeout(() => {
+            menuEl.style.display = 'none';
+            // ถ้าพิมพ์ตรงกับหนึ่งใน TITLES พอดี ให้เลือกอัตโนมัติ
+            const matched = TITLES.find(t => t.toLowerCase() === titleSearchEl.value.trim().toLowerCase());
+            if (matched) {
+                if (titleEl.value !== matched) {
+                    selectTitle(matched);
+                }
+            } else if (!titleEl.value) {
+                titleSearchEl.value = '';
+            } else {
+                titleSearchEl.value = titleEl.value;
+            }
+        }, 200);
+    });
+
+    toggleBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (menuEl.style.display === 'block') {
+            menuEl.style.display = 'none';
+        } else {
+            titleSearchEl.focus();
+            renderMenu('');
+        }
+    });
+
     vsEl.addEventListener('input', () => scheduleRowPreview(idx));
     veEl.addEventListener('input', () => scheduleRowPreview(idx));
     removeBtn.addEventListener('click', () => {
