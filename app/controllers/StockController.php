@@ -270,4 +270,30 @@ private function combineBundles(): void
         }
         exit;
     }
+
+    /** AJAX: รายละเอียดรายเล่มและบิลซื้อของเรื่องที่ระบุ (ใช้ใน Modal หน้าสต็อก) */
+    public function titleDetail(): void
+    {
+        header('Content-Type: application/json; charset=utf-8');
+        try {
+            $title = trim($this->input('title', ''));
+            if ($title === '') {
+                echo json_encode(['success' => false, 'message' => 'ไม่พบชื่อเรื่อง']);
+                return;
+            }
+            $books = $this->inventoryModel->getBooksByTitle($title);
+            $purchases = $this->inventoryModel->getPurchasesByTitle($title);
+            echo json_encode([
+                'success' => true,
+                'data' => [
+                    'title' => $title,
+                    'books' => $books,
+                    'purchases' => $purchases,
+                ]
+            ]);
+        } catch (Throwable $e) {
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+    }
 }

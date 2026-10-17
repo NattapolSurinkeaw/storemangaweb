@@ -133,10 +133,10 @@
                 <input type="file" name="combine_cover" class="form-control" accept="image/jpeg,image/png,image/gif,image/webp">
             </div>
             <div class="col-12 col-md-4 mt-2 mt-md-0">
+                <div class="text-muted small mt-1">เลือกอย่างน้อย 2 ชุด</div>
                 <button type="submit" id="combineBtn" class="btn btn-warning w-100 w-md-auto" disabled>
                     <i class="bi bi-box2-heart"></i> รวมชุดที่เลือกเป็นกลุ่มเดียว
                 </button>
-                <div class="text-muted small mt-1">เลือกอย่างน้อย 2 ชุด</div>
             </div>
         </div>
         <div class="table-responsive">
@@ -398,31 +398,20 @@ function addRow() {
         }
     });
 
-    titleSearchEl.addEventListener('blur', () => {
-        // ซ่อนเมื่อคลิกข้างนอก
-        setTimeout(() => {
+    titleSearchEl.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
             menuEl.style.display = 'none';
-            // ถ้าพิมพ์ตรงกับหนึ่งใน TITLES พอดี ให้เลือกอัตโนมัติ
-            const matched = TITLES.find(t => t.toLowerCase() === titleSearchEl.value.trim().toLowerCase());
-            if (matched) {
-                if (titleEl.value !== matched) {
-                    selectTitle(matched);
-                }
-            } else if (!titleEl.value) {
-                titleSearchEl.value = '';
-            } else {
-                titleSearchEl.value = titleEl.value;
-            }
-        }, 200);
+        }
     });
 
     toggleBtn.addEventListener('click', (e) => {
         e.preventDefault();
+        e.stopPropagation();
         if (menuEl.style.display === 'block') {
             menuEl.style.display = 'none';
         } else {
+            renderMenu(titleSearchEl.value);
             titleSearchEl.focus();
-            renderMenu('');
         }
     });
 
@@ -805,6 +794,31 @@ if (bundleCoverInput) {
         reader.readAsDataURL(f);
     });
 }
+
+// คลิกข้างนอกกล่องให้ปิดเมนู และคืนค่าข้อความชื่อเรื่องที่เลือกไว้
+document.addEventListener('click', (e) => {
+    rowsByIndex.forEach(r => {
+        const wrap = r.titleSearchEl ? r.titleSearchEl.closest('.searchable-select-wrap') : null;
+        if (!wrap) return;
+        const menu = wrap.querySelector('.searchable-select-menu');
+        if (!wrap.contains(e.target)) {
+            if (menu) menu.style.display = 'none';
+            if (!r.titleEl.value) {
+                // ถ้าพิมพ์ตรงกับหนึ่งใน TITLES พอดี ให้เลือกอัตโนมัติ
+                const matched = TITLES.find(t => t.toLowerCase() === r.titleSearchEl.value.trim().toLowerCase());
+                if (matched) {
+                    r.titleSearchEl.value = matched;
+                    r.titleEl.value = matched;
+                    onTitleChange(parseInt(r.titleSearchEl.closest('.item-row').dataset.idx));
+                } else {
+                    r.titleSearchEl.value = '';
+                }
+            } else {
+                r.titleSearchEl.value = r.titleEl.value;
+            }
+        }
+    });
+});
 
 // Bootstrap JS โหลดจาก footer.php หลังจากนี้ -> สร้าง Modal ตอน DOM พร้อม
 document.addEventListener('DOMContentLoaded', ensureModal);
