@@ -5,29 +5,39 @@
  */
 class InventoryModel extends Model
 {
-    /** สรุปสต็อกคงเหลือ (สถานะ available) แยกตามชื่อเรื่อง */
+    /** สรุปสต็อกคงเหลือแยกตามชื่อเรื่อง (แสดงหนังสือทั้งหมดที่ยังไม่ขาย) พร้อมแยกจำนวนจัดชุดแล้วและยังไม่จัดชุด */
     public function getStockSummaryByTitle(): array
     {
         $stmt = $this->db->query(
             "SELECT title,
-                    COUNT(*) AS available_count,
+                    COUNT(*) AS total_count,
+                    COUNT(*) AS book_count,
+                    SUM(CASE WHEN status = 'in_bundle' THEN 1 ELSE 0 END) AS in_bundle_count,
+                    SUM(CASE WHEN status = 'available' THEN 1 ELSE 0 END) AS available_count,
                     MIN(volume) AS min_volume,
                     MAX(volume) AS max_volume,
                     SUM(unit_cost) AS total_cost
              FROM inventory_books
-             WHERE status = 'available'
+             WHERE status != 'sold'
              GROUP BY title
              ORDER BY title ASC"
         );
         return $stmt->fetchAll();
     }
 
-    /** รายเล่มทั้งหมดของเรื่องหนึ่ง (ทุกสถานะ) */
-    public function getBooksByTitle(string $title): array
+    /** รายเล่มของเรื่องหนึ่ง (ค่าเริ่มต้นดึงเฉพาะเล่มที่ยังไม่ขาย) */
+    public function getBooksByTitle(string $title, bool $unsoldOnly = true): array
     {
-        $stmt = $this->db->prepare(
-            "SELECT * FROM inventory_books WHERE title = :title ORDER BY volume ASC, purchase_date ASC"
-        );
+        $sql = "SELECT ib.*, b.volume_start AS bundle_vol_start, b.volume_end AS bundle_vol_end
+                FROM inventory_books ib
+                LEFT JOIN bundles b ON ib.bundle_id = b.id
+                WHERE ib.title = :title";
+        if ($unsoldOnly) {
+            $sql .= " AND ib.status != 'sold'";
+        }
+        $sql .= " ORDER BY ib.volume ASC, ib.purchase_date ASC";
+
+        $stmt = $this->db->prepare($sql);
         $stmt->execute([':title' => $title]);
         return $stmt->fetchAll();
     }

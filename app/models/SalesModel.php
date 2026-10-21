@@ -99,6 +99,8 @@ class SalesModel extends Model
             } elseif ($refType === 'bundle') {
                 $upd = $this->db->prepare("UPDATE bundles SET status = 'sold' WHERE id = :id");
                 $upd->execute([':id' => $refId]);
+                $updBooks = $this->db->prepare("UPDATE inventory_books SET status = 'sold' WHERE bundle_id = :id");
+                $updBooks->execute([':id' => $refId]);
             } else { // bundle_group
                 // atomic: mark group + every bundle in group as sold
                 $chk = $this->db->prepare("SELECT status FROM bundle_groups WHERE id = :id FOR UPDATE");
@@ -113,6 +115,10 @@ class SalesModel extends Model
                 $updBundles->execute([':gid' => $refId]);
                 $updGroup = $this->db->prepare("UPDATE bundle_groups SET status = 'sold' WHERE id = :id");
                 $updGroup->execute([':id' => $refId]);
+                $updBooks = $this->db->prepare(
+                    "UPDATE inventory_books SET status = 'sold' WHERE bundle_id IN (SELECT id FROM bundles WHERE group_id = :gid)"
+                );
+                $updBooks->execute([':gid' => $refId]);
             }
 
             $this->db->commit();
@@ -220,11 +226,17 @@ class SalesModel extends Model
             } elseif ($refType === 'bundle') {
                 $u = $this->db->prepare("UPDATE bundles SET status = 'available' WHERE id = :id");
                 $u->execute([':id' => $refId]);
+                $uBooks = $this->db->prepare("UPDATE inventory_books SET status = 'in_bundle' WHERE bundle_id = :id");
+                $uBooks->execute([':id' => $refId]);
             } elseif ($refType === 'bundle_group') {
                 $u1 = $this->db->prepare("UPDATE bundles SET status = 'available' WHERE group_id = :gid");
                 $u1->execute([':gid' => $refId]);
                 $u2 = $this->db->prepare("UPDATE bundle_groups SET status = 'available' WHERE id = :id");
                 $u2->execute([':id' => $refId]);
+                $uBooks = $this->db->prepare(
+                    "UPDATE inventory_books SET status = 'in_bundle' WHERE bundle_id IN (SELECT id FROM bundles WHERE group_id = :gid)"
+                );
+                $uBooks->execute([':gid' => $refId]);
             } else {
                 throw new RuntimeException("ประเภทสินค้าไม่ถูกต้อง: {$refType}");
             }

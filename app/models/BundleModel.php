@@ -277,9 +277,18 @@ class BundleModel extends Model
     public function getAvailableBundles(): array
     {
         $stmt = $this->db->query(
-            "SELECT * FROM bundles
-             WHERE status = 'available' AND group_id IS NULL
-             ORDER BY id DESC"
+            "SELECT b.*,
+                    (
+                        SELECT GROUP_CONCAT(DISTINCT CONCAT(p.id, ':', p.purchase_code) ORDER BY p.id ASC SEPARATOR '||')
+                        FROM inventory_books ib
+                        JOIN purchase_item_volumes piv ON piv.id = ib.purchase_item_volume_id
+                        JOIN purchase_items pi ON pi.id = piv.purchase_item_id
+                        JOIN purchases p ON p.id = pi.purchase_id
+                        WHERE ib.bundle_id = b.id
+                    ) AS purchase_bills
+             FROM bundles b
+             WHERE b.status = 'available' AND b.group_id IS NULL
+             ORDER BY b.id DESC"
         );
         return $stmt->fetchAll();
     }
@@ -299,7 +308,16 @@ class BundleModel extends Model
                      WHERE b.group_id = g.id) AS titles_summary,
                     (SELECT GROUP_CONCAT(DISTINCT b.title ORDER BY b.title ASC SEPARATOR ', ')
                      FROM bundles b
-                     WHERE b.group_id = g.id) AS titles_only
+                     WHERE b.group_id = g.id) AS titles_only,
+                    (
+                        SELECT GROUP_CONCAT(DISTINCT CONCAT(p.id, ':', p.purchase_code) ORDER BY p.id ASC SEPARATOR '||')
+                        FROM bundles b
+                        JOIN inventory_books ib ON ib.bundle_id = b.id
+                        JOIN purchase_item_volumes piv ON piv.id = ib.purchase_item_volume_id
+                        JOIN purchase_items pi ON pi.id = piv.purchase_item_id
+                        JOIN purchases p ON p.id = pi.purchase_id
+                        WHERE b.group_id = g.id
+                    ) AS purchase_bills
              FROM bundle_groups g
              WHERE g.status = 'available'
              ORDER BY g.id DESC"
@@ -331,7 +349,13 @@ class BundleModel extends Model
         $bundles = $bStmt->fetchAll();
 
         $bookStmt = $this->db->prepare(
-            "SELECT * FROM inventory_books WHERE bundle_id = :bid ORDER BY volume ASC, purchase_date ASC"
+            "SELECT ib.*, p.id AS purchase_id, p.purchase_code
+             FROM inventory_books ib
+             LEFT JOIN purchase_item_volumes piv ON piv.id = ib.purchase_item_volume_id
+             LEFT JOIN purchase_items pi ON pi.id = piv.purchase_item_id
+             LEFT JOIN purchases p ON p.id = pi.purchase_id
+             WHERE ib.bundle_id = :bid
+             ORDER BY ib.volume ASC, ib.purchase_date ASC"
         );
         $items = [];
         foreach ($bundles as $b) {
@@ -363,7 +387,13 @@ class BundleModel extends Model
     public function getBundleBooks(int $bundleId): array
     {
         $stmt = $this->db->prepare(
-            "SELECT * FROM inventory_books WHERE bundle_id = :bid ORDER BY volume ASC"
+            "SELECT ib.*, p.id AS purchase_id, p.purchase_code
+             FROM inventory_books ib
+             LEFT JOIN purchase_item_volumes piv ON piv.id = ib.purchase_item_volume_id
+             LEFT JOIN purchase_items pi ON pi.id = piv.purchase_item_id
+             LEFT JOIN purchases p ON p.id = pi.purchase_id
+             WHERE ib.bundle_id = :bid
+             ORDER BY ib.volume ASC"
         );
         $stmt->execute([':bid' => $bundleId]);
         return $stmt->fetchAll();

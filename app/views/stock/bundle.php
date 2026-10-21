@@ -143,10 +143,21 @@
             <table class="table table-sm table-flex-mobile align-middle">
                 <thead><tr>
                     <th style="width:40px;"><input type="checkbox" id="checkAllBundles"></th>
-                    <th>#</th><th>รูป</th><th>เรื่อง</th><th>ช่วงเล่ม</th><th>จำนวนเล่ม</th><th>ต้นทุนรวม</th>
+                    <th>#</th><th>รูป</th><th>เรื่อง</th><th>ช่วงเล่ม</th><th>บิลซื้อเข้า</th><th>จำนวนเล่ม</th><th>ต้นทุนรวม</th>
                 </tr></thead>
                 <tbody>
                 <?php foreach ($bundles as $b): ?>
+                    <?php
+                    $bBills = [];
+                    if (!empty($b['purchase_bills'])) {
+                        foreach (explode('||', $b['purchase_bills']) as $billStr) {
+                            $parts = explode(':', $billStr, 2);
+                            if (count($parts) === 2) {
+                                $bBills[] = ['id' => (int)$parts[0], 'code' => $parts[1]];
+                            }
+                        }
+                    }
+                    ?>
                     <tr>
                         <td data-label="เลือก"><input type="checkbox" class="bundle-check" name="bundle_ids[]" value="<?= (int)$b['id'] ?>"></td>
                         <td data-label="#"><?= (int)$b['id'] ?></td>
@@ -161,6 +172,19 @@
                         </td>
                         <td data-label="เรื่อง"><?= htmlspecialchars($b['title']) ?></td>
                         <td data-label="ช่วงเล่ม"><span class="badge bg-info text-dark">เล่ม <?= (int)$b['volume_start'] ?> - <?= (int)$b['volume_end'] ?></span></td>
+                        <td data-label="บิลซื้อเข้า">
+                            <?php if (!empty($bBills)): ?>
+                                <div class="d-flex flex-column gap-1 align-items-start">
+                                    <?php foreach ($bBills as $bill): ?>
+                                        <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 view-purchase-btn" data-id="<?= $bill['id'] ?>" title="คลิกดูคำสั่งซื้อ <?= htmlspecialchars($bill['code']) ?>" style="font-size:0.75rem;">
+                                            <i class="bi bi-receipt me-1"></i><?= htmlspecialchars($bill['code']) ?>
+                                        </button>
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php else: ?>
+                                <span class="text-muted small">-</span>
+                            <?php endif; ?>
+                        </td>
                         <td data-label="จำนวนเล่ม"><?= (int)$b['book_count'] ?></td>
                         <td data-label="ต้นทุนรวม"><?= number_format((float)$b['total_cost'], 2) ?> ฿</td>
                     </tr>
@@ -178,10 +202,21 @@
         <table class="table table-sm table-flex-mobile align-middle">
             <thead><tr>
                 <th>#</th><th>ประเภท</th><th>รูป</th><th>เรื่อง</th><th>ช่วงเล่ม</th>
-                <th>จำนวนเล่ม</th><th>ต้นทุนรวม</th><th>ต้นทุน/เล่ม</th><th></th>
+                <th>บิลซื้อเข้า</th><th>จำนวนเล่ม</th><th>ต้นทุนรวม</th><th>ต้นทุน/เล่ม</th><th></th>
             </tr></thead>
             <tbody>
             <?php foreach ($bundleGroups as $g): ?>
+                <?php
+                $gBills = [];
+                if (!empty($g['purchase_bills'])) {
+                    foreach (explode('||', $g['purchase_bills']) as $billStr) {
+                        $parts = explode(':', $billStr, 2);
+                        if (count($parts) === 2) {
+                            $gBills[] = ['id' => (int)$parts[0], 'code' => $parts[1]];
+                        }
+                    }
+                }
+                ?>
                 <tr>
                     <td data-label="#">#<?= (int)$g['id'] ?></td>
                     <td data-label="ประเภท"><span class="badge bg-warning text-dark"><i class="bi bi-box2-heart"></i> กลุ่มรวม</span></td>
@@ -214,6 +249,19 @@
                     <td data-label="ช่วงเล่ม">
                         <span class="badge bg-info text-dark">รวมหลายเรื่อง</span>
                     </td>
+                    <td data-label="บิลซื้อเข้า">
+                        <?php if (!empty($gBills)): ?>
+                            <div class="d-flex flex-column gap-1 align-items-start">
+                                <?php foreach ($gBills as $bill): ?>
+                                    <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 view-purchase-btn" data-id="<?= $bill['id'] ?>" title="คลิกดูคำสั่งซื้อ <?= htmlspecialchars($bill['code']) ?>" style="font-size:0.75rem;">
+                                        <i class="bi bi-receipt me-1"></i><?= htmlspecialchars($bill['code']) ?>
+                                    </button>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php else: ?>
+                            <span class="text-muted small">-</span>
+                        <?php endif; ?>
+                    </td>
                     <td data-label="จำนวนเล่ม"><?= (int)$g['book_count'] ?></td>
                     <td data-label="ต้นทุนรวม"><?= number_format((float)$g['total_cost'], 2) ?> ฿</td>
                     <td data-label="ต้นทุน/เล่ม" class="text-muted"><?= $g['book_count'] > 0 ? number_format((float)$g['total_cost'] / $g['book_count'], 2) : '0.00' ?> ฿</td>
@@ -231,6 +279,17 @@
                 </tr>
             <?php endforeach; ?>
             <?php foreach ($bundles as $b): ?>
+                <?php
+                $bBills = [];
+                if (!empty($b['purchase_bills'])) {
+                    foreach (explode('||', $b['purchase_bills']) as $billStr) {
+                        $parts = explode(':', $billStr, 2);
+                        if (count($parts) === 2) {
+                            $bBills[] = ['id' => (int)$parts[0], 'code' => $parts[1]];
+                        }
+                    }
+                }
+                ?>
                 <tr>
                     <td data-label="#"><?= (int)$b['id'] ?></td>
                     <td data-label="ประเภท"><span class="badge bg-secondary"><i class="bi bi-collection"></i> ชุดเดี่ยว</span></td>
@@ -245,6 +304,19 @@
                     </td>
                     <td data-label="เรื่อง"><?= htmlspecialchars($b['title']) ?></td>
                     <td data-label="ช่วงเล่ม"><span class="badge bg-info text-dark">เล่ม <?= (int)$b['volume_start'] ?> - <?= (int)$b['volume_end'] ?></span></td>
+                    <td data-label="บิลซื้อเข้า">
+                        <?php if (!empty($bBills)): ?>
+                            <div class="d-flex flex-column gap-1 align-items-start">
+                                <?php foreach ($bBills as $bill): ?>
+                                    <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 view-purchase-btn" data-id="<?= $bill['id'] ?>" title="คลิกดูคำสั่งซื้อ <?= htmlspecialchars($bill['code']) ?>" style="font-size:0.75rem;">
+                                        <i class="bi bi-receipt me-1"></i><?= htmlspecialchars($bill['code']) ?>
+                                    </button>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php else: ?>
+                            <span class="text-muted small">-</span>
+                        <?php endif; ?>
+                    </td>
                     <td data-label="จำนวนเล่ม"><?= (int)$b['book_count'] ?></td>
                     <td data-label="ต้นทุนรวม"><?= number_format((float)$b['total_cost'], 2) ?> ฿</td>
                     <td data-label="ต้นทุน/เล่ม" class="text-muted"><?= $b['book_count'] > 0 ? number_format((float)$b['total_cost'] / $b['book_count'], 2) : '0.00' ?> ฿</td>
@@ -262,7 +334,7 @@
                 </tr>
             <?php endforeach; ?>
             <?php if (empty($bundles) && empty($bundleGroups)): ?>
-                <tr><td colspan="9" class="text-center text-muted">ยังไม่มีชุดที่จัดไว้</td></tr>
+                <tr><td colspan="10" class="text-center text-muted py-4">ยังไม่มีชุดที่จัดไว้</td></tr>
             <?php endif; ?>
             </tbody>
         </table>
@@ -278,6 +350,27 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body" id="bundleDetailBody">
+                <div class="text-center text-muted py-4">กำลังโหลด...</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ปิด</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: รายละเอียดคำสั่งซื้อเข้า -->
+<div class="modal fade" id="purchaseDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title d-flex align-items-center gap-2">
+                    <i class="bi bi-receipt text-primary"></i>
+                    <span>รายละเอียดคำสั่งซื้อเข้า</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-3 p-md-4" id="purchaseDetailBody">
                 <div class="text-center text-muted py-4">กำลังโหลด...</div>
             </div>
             <div class="modal-footer">
@@ -689,14 +782,21 @@ function renderBundleHtml(d) {
                </a>
            </div>`
         : `<div class="alert alert-light text-muted text-center py-2 mb-2">ไม่มีรูปปกชุด</div>`;
-    let rows = books.map(bk => `
-        <tr>
-            <td>${bk.volume}</td>
-            <td>${escapeHtml(bk.purchase_date)}</td>
-            <td>${parseFloat(bk.unit_cost).toFixed(2)} ฿</td>
-            <td><span class="text-muted small">#${bk.id}</span></td>
-        </tr>
-    `).join('');
+    let rows = books.map(bk => {
+        let billHtml = '<span class="text-muted small">-</span>';
+        if (bk.purchase_code && bk.purchase_id) {
+            billHtml = `<button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 view-purchase-btn" data-id="${bk.purchase_id}" title="คลิกดูคำสั่งซื้อ ${escapeHtml(bk.purchase_code)}" style="font-size:0.75rem;"><i class="bi bi-receipt me-1"></i>${escapeHtml(bk.purchase_code)}</button>`;
+        }
+        return `
+            <tr>
+                <td><strong>เล่ม ${bk.volume}</strong></td>
+                <td>${escapeHtml(bk.purchase_date)}</td>
+                <td>${parseFloat(bk.unit_cost).toFixed(2)} ฿</td>
+                <td>${billHtml}</td>
+                <td><span class="text-muted small">#${bk.id}</span></td>
+            </tr>
+        `;
+    }).join('');
     return `
         ${coverBlock}
         <div class="mb-2">
@@ -707,9 +807,9 @@ function renderBundleHtml(d) {
                  | ต้นทุนรวม: <strong class="text-primary">${parseFloat(b.total_cost).toFixed(2)} ฿</strong></div>
         </div>
         <div class="table-responsive">
-            <table class="table table-sm table-striped">
-                <thead><tr><th>เล่ม</th><th>วันที่ซื้อ</th><th>ต้นทุน</th><th>Book ID</th></tr></thead>
-                <tbody>${rows || '<tr><td colspan="4" class="text-center text-muted">ไม่มีเล่ม</td></tr>'}</tbody>
+            <table class="table table-sm table-striped align-middle">
+                <thead><tr><th>เล่ม</th><th>วันที่ซื้อ</th><th>ต้นทุน</th><th>บิลซื้อเข้า</th><th>Book ID</th></tr></thead>
+                <tbody>${rows || '<tr><td colspan="5" class="text-center text-muted">ไม่มีเล่ม</td></tr>'}</tbody>
             </table>
         </div>
     `;
@@ -743,13 +843,20 @@ function renderGroupHtml(d) {
     bundles.forEach(item => {
         const b = item.bundle;
         const books = item.books;
-        let rows = books.map(bk => `
-            <tr>
-                <td>${bk.volume}</td>
-                <td>${escapeHtml(bk.purchase_date)}</td>
-                <td>${parseFloat(bk.unit_cost).toFixed(2)} ฿</td>
-            </tr>
-        `).join('');
+        let rows = books.map(bk => {
+            let billHtml = '<span class="text-muted small">-</span>';
+            if (bk.purchase_code && bk.purchase_id) {
+                billHtml = `<button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 view-purchase-btn" data-id="${bk.purchase_id}" title="คลิกดูคำสั่งซื้อ ${escapeHtml(bk.purchase_code)}" style="font-size:0.75rem;"><i class="bi bi-receipt me-1"></i>${escapeHtml(bk.purchase_code)}</button>`;
+            }
+            return `
+                <tr>
+                    <td><strong>เล่ม ${bk.volume}</strong></td>
+                    <td>${escapeHtml(bk.purchase_date)}</td>
+                    <td>${parseFloat(bk.unit_cost).toFixed(2)} ฿</td>
+                    <td>${billHtml}</td>
+                </tr>
+            `;
+        }).join('');
         html += `
             <div class="mb-3 border rounded p-2">
                 <div class="d-flex justify-content-between align-items-center mb-1">
@@ -757,9 +864,9 @@ function renderGroupHtml(d) {
                     <span class="badge bg-info text-dark">เล่ม ${b.volume_start} - ${b.volume_end}</span>
                 </div>
                 <div class="table-responsive">
-                    <table class="table table-sm table-striped mb-0">
-                        <thead><tr><th>เล่ม</th><th>วันที่ซื้อ</th><th>ต้นทุน</th></tr></thead>
-                        <tbody>${rows || '<tr><td colspan="3" class="text-center text-muted">ไม่มีเล่ม</td></tr>'}</tbody>
+                    <table class="table table-sm table-striped align-middle mb-0">
+                        <thead><tr><th>เล่ม</th><th>วันที่ซื้อ</th><th>ต้นทุน</th><th>บิลซื้อเข้า</th></tr></thead>
+                        <tbody>${rows || '<tr><td colspan="4" class="text-center text-muted">ไม่มีเล่ม</td></tr>'}</tbody>
                     </table>
                 </div>
                 <div class="text-end small text-muted mt-1">
@@ -770,6 +877,123 @@ function renderGroupHtml(d) {
     });
     return html;
 }
+
+/* =================== Purchase Detail Modal =================== */
+let purchaseModal = null;
+const purchaseModalEl = document.getElementById('purchaseDetailModal');
+const purchaseModalBody = document.getElementById('purchaseDetailBody');
+
+function ensurePurchaseModal() {
+    if (!purchaseModal && typeof bootstrap !== 'undefined' && purchaseModalEl) {
+        purchaseModal = new bootstrap.Modal(purchaseModalEl);
+    }
+    return purchaseModal;
+}
+
+function renderPurchaseHtml(d) {
+    const p = d.purchase;
+    const items = p.items || [];
+    const images = d.images || [];
+    const totalBookCount = items.reduce((s, it) => s + (parseInt(it.book_count) || 0), 0);
+    const itemsTotal = items.reduce((s, it) => s + (parseFloat(it.item_price) || 0), 0);
+    const shipPerBook = totalBookCount > 0 ? (parseFloat(p.total_shipping_cost) / totalBookCount) : 0;
+
+    const headerHtml = `
+        <div class="mb-3 border-bottom pb-3">
+            <div class="d-flex justify-content-between align-items-start mb-2 flex-wrap gap-2">
+                <div>
+                    <span class="badge bg-secondary mb-1">บิล #${p.id}</span>
+                    <h5 class="mb-0 text-primary fw-bold"><i class="bi bi-receipt me-1"></i>${escapeHtml(p.purchase_code)}</h5>
+                </div>
+                <div class="text-muted small">
+                    <i class="bi bi-calendar3 me-1"></i>วันที่ซื้อ: <strong>${escapeHtml(p.purchase_date)}</strong>
+                </div>
+            </div>
+            ${p.note ? `<div class="small text-muted mb-2"><i class="bi bi-card-text me-1"></i>หมายเหตุ: ${escapeHtml(p.note)}</div>` : ''}
+            <div class="p-2 bg-light rounded d-flex flex-wrap gap-3 small">
+                <div>จำนวนเล่มรวม: <strong>${totalBookCount}</strong> เล่ม</div>
+                <div>ยอดซื้อ (ไม่รวมส่ง): <strong>${itemsTotal.toFixed(2)} ฿</strong></div>
+                <div>ค่าส่ง: <strong>${parseFloat(p.total_shipping_cost).toFixed(2)} ฿</strong></div>
+                <div>รวมทั้งบิล: <strong class="text-primary">${(itemsTotal + parseFloat(p.total_shipping_cost)).toFixed(2)} ฿</strong></div>
+            </div>
+        </div>
+    `;
+
+    let itemsHtml = '';
+    if (items.length === 0) {
+        itemsHtml = '<div class="alert alert-warning">ไม่มีรายการหนังสือในบิลนี้</div>';
+    } else {
+        itemsHtml = items.map((it, idx) => {
+            const volumes = it.volumes || [];
+            const volChips = volumes.map(v => {
+                const qty = parseInt(v.quantity) || 0;
+                const start = parseInt(v.volume_start);
+                const end = parseInt(v.volume_end);
+                const label = start === end ? `เล่ม ${start}` : `เล่ม ${start}-${end}`;
+                return `<span class="badge bg-info text-dark me-1">${label} (${qty})</span>`;
+            }).join('');
+            const unitCost = (parseFloat(it.unit_cost) || 0) + shipPerBook;
+            return `
+                <div class="mb-3 border rounded p-3 bg-white shadow-sm">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <strong><i class="bi bi-book text-primary me-1"></i> เรื่องที่ ${idx + 1}: ${escapeHtml(it.title)}</strong>
+                        <span class="badge bg-light text-dark border">${parseInt(it.book_count) || 0} เล่ม</span>
+                    </div>
+                    <div class="small my-2">${volChips || '<span class="text-muted">ไม่มีช่วงเล่ม</span>'}</div>
+                    <div class="row g-2 small pt-2 border-top">
+                        <div class="col-6 col-md-3">ราคาเรื่องนี้: <strong>${parseFloat(it.item_price).toFixed(2)} ฿</strong></div>
+                        <div class="col-6 col-md-3">ต้นทุน/เล่ม (ไม่รวมส่ง): <strong>${(parseFloat(it.unit_cost) || 0).toFixed(2)} ฿</strong></div>
+                        <div class="col-6 col-md-3">ค่าส่ง/เล่ม: <strong>${shipPerBook.toFixed(2)} ฿</strong></div>
+                        <div class="col-6 col-md-3">ต้นทุนรวม/เล่ม: <strong class="text-primary">${unitCost.toFixed(2)} ฿</strong></div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    let imagesHtml = '';
+    if (images.length > 0) {
+        const imgs = images.map(img => `
+            <a href="${BASE_URL}/${escapeHtml(img.image_path)}" target="_blank" title="คลิกดูภาพเต็ม">
+                <img src="${BASE_URL}/${escapeHtml(img.image_path)}"
+                     alt="slip"
+                     style="width:110px;height:110px;object-fit:cover;border:1px solid #ddd;border-radius:6px;">
+            </a>
+        `).join('');
+        imagesHtml = `
+            <div class="mt-3">
+                <div class="fw-semibold mb-2"><i class="bi bi-image text-primary me-1"></i> รูปสลิปการซื้อ (${images.length})</div>
+                <div class="d-flex flex-wrap gap-2">${imgs}</div>
+            </div>
+        `;
+    }
+
+    return headerHtml + itemsHtml + imagesHtml;
+}
+
+document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.view-purchase-btn');
+    if (!btn) return;
+    const id = btn.dataset.id;
+    if (!id) return;
+    const modal = ensurePurchaseModal();
+    if (!modal) { alert('Bootstrap ยังโหลดไม่เสร็จ กรุณาลองใหม่'); return; }
+    purchaseModalBody.innerHTML = `
+        <div class="text-center text-muted py-5">
+            <div class="spinner-border text-primary spinner-border-sm me-2" role="status"></div>
+            กำลังโหลดข้อมูลคำสั่งซื้อ...
+        </div>
+    `;
+    modal.show();
+    try {
+        const res = await fetch(`${BASE_URL}/index.php?url=purchase/detail/${id}`);
+        const json = await res.json();
+        if (!json.success) throw new Error(json.message || 'โหลดข้อมูลไม่สำเร็จ');
+        purchaseModalBody.innerHTML = renderPurchaseHtml(json.data);
+    } catch (err) {
+        purchaseModalBody.innerHTML = `<div class="alert alert-danger"><i class="bi bi-exclamation-triangle me-1"></i> ${escapeHtml(err.message)}</div>`;
+    }
+});
 
 /* =================== Init =================== */
 addItemBtn.addEventListener('click', addRow);

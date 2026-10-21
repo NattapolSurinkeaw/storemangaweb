@@ -77,7 +77,7 @@
                         <tr>
                             <td><?= htmlspecialchars($s['title']) ?></td>
                             <td><?= $s['min_volume'] ?>-<?= $s['max_volume'] ?></td>
-                            <td><?= $s['available_count'] ?></td>
+                            <td><?= $s['total_count'] ?? $s['available_count'] ?></td>
                             <td><?= number_format($s['total_cost'], 2) ?> ฿</td>
                         </tr>
                     <?php endforeach; ?>

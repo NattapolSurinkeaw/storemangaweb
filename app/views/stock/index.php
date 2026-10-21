@@ -1,6 +1,52 @@
-<div class="page-title">
-    <i class="bi bi-boxes"></i>
-    <h3>สต็อกมังงะคงเหลือ</h3>
+<?php
+$totalTitles = count($stockSummary);
+$totalBooksAll = array_sum(array_column($stockSummary, 'total_count'));
+$totalInBundleAll = array_sum(array_column($stockSummary, 'in_bundle_count'));
+$totalAvailableAll = array_sum(array_column($stockSummary, 'available_count'));
+$totalStockCostAll = array_sum(array_column($stockSummary, 'total_cost'));
+?>
+
+<div class="page-title d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-boxes"></i>
+        <h3 class="mb-0">สต็อกมังงะคงเหลือ</h3>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        <a href="<?= BASE_URL ?>/index.php?url=stock/bundle" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-collection me-1"></i> จัดชุดขาย (Bundling)
+        </a>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="stat-card stat-purchase">
+            <div class="stat-label">หนังสือคงเหลือทั้งหมด</div>
+            <div class="stat-value"><?= number_format($totalBooksAll) ?> <span style="font-size: 0.95rem; font-weight: 500;">เล่ม</span></div>
+            <div class="small opacity-75 mt-1"><?= number_format($totalTitles) ?> เรื่องที่ยังมีสต็อก</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card" style="background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);">
+            <div class="stat-label">จัดชุดแล้ว (อยู่ในชุดขาย)</div>
+            <div class="stat-value"><?= number_format($totalInBundleAll) ?> <span style="font-size: 0.95rem; font-weight: 500;">เล่ม</span></div>
+            <div class="small opacity-75 mt-1">พร้อมขายแบบชุด</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card stat-profit">
+            <div class="stat-label">ยังไม่จัดชุด (เล่มเดี่ยว)</div>
+            <div class="stat-value"><?= number_format($totalAvailableAll) ?> <span style="font-size: 0.95rem; font-weight: 500;">เล่ม</span></div>
+            <div class="small opacity-75 mt-1">พร้อมจัดชุดหรือขายเดี่ยว</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card stat-sales">
+            <div class="stat-label">มูลค่าต้นทุนคงเหลือรวม</div>
+            <div class="stat-value"><?= number_format($totalStockCostAll, 2) ?> <span style="font-size: 0.95rem; font-weight: 500;">฿</span></div>
+            <div class="small opacity-75 mt-1">คำนวณจากเล่มที่ยังไม่ขาย</div>
+        </div>
+    </div>
 </div>
 
 <div class="card p-4 mb-4">
@@ -20,15 +66,59 @@
     </div>
     <div class="table-responsive">
         <table class="table table-sm table-hover table-flex-mobile" id="stockSummaryTable">
-            <thead><tr><th>เรื่อง</th><th>เล่มที่มี (available)</th><th>จำนวน</th><th>ต้นทุนรวม</th><th></th></tr></thead>
+            <thead>
+                <tr>
+                    <th>เรื่อง</th>
+                    <th>เล่มที่มี</th>
+                    <th>จำนวนทั้งหมด</th>
+                    <th>สถานะหนังสือ</th>
+                    <th>ต้นทุนรวม</th>
+                    <th class="text-end"></th>
+                </tr>
+            </thead>
             <tbody>
             <?php foreach ($stockSummary as $s): ?>
                 <tr class="stock-item-row" data-title="<?= htmlspecialchars(mb_strtolower($s['title'], 'UTF-8')) ?>">
-                    <td class="stock-title"><?= htmlspecialchars($s['title']) ?></td>
-                    <td><?= $s['min_volume'] ?> - <?= $s['max_volume'] ?></td>
-                    <td><?= $s['available_count'] ?></td>
-                    <td><?= number_format($s['total_cost'], 2) ?> ฿</td>
-                    <td>
+                    <td class="stock-title" data-label="เรื่อง">
+                        <strong><?= htmlspecialchars($s['title']) ?></strong>
+                    </td>
+                    <td data-label="เล่มที่มี">
+                        <?php if ((int)$s['min_volume'] === (int)$s['max_volume']): ?>
+                            <span class="badge bg-light text-dark border">เล่ม <?= (int)$s['min_volume'] ?></span>
+                        <?php else: ?>
+                            <span class="badge bg-light text-dark border">เล่ม <?= (int)$s['min_volume'] ?> - <?= (int)$s['max_volume'] ?></span>
+                        <?php endif; ?>
+                    </td>
+                    <td data-label="จำนวนทั้งหมด">
+                        <span class="fw-bold"><?= (int)$s['total_count'] ?></span> เล่ม
+                    </td>
+                    <td data-label="สถานะหนังสือ">
+                        <div class="d-inline-flex flex-wrap gap-1 align-items-center">
+                            <?php if ((int)$s['in_bundle_count'] > 0): ?>
+                                <span class="badge badge-status-in_bundle" title="จัดชุดแล้ว <?= (int)$s['in_bundle_count'] ?> เล่ม">
+                                    <i class="bi bi-collection me-1"></i>จัดชุดแล้ว <strong><?= (int)$s['in_bundle_count'] ?></strong> เล่ม
+                                </span>
+                            <?php else: ?>
+                                <span class="badge bg-light text-muted border" title="ยังไม่มีเล่มที่จัดชุด">
+                                    <i class="bi bi-collection me-1"></i>จัดชุดแล้ว 0 เล่ม
+                                </span>
+                            <?php endif; ?>
+
+                            <?php if ((int)$s['available_count'] > 0): ?>
+                                <span class="badge badge-status-available" title="ยังไม่จัดชุด <?= (int)$s['available_count'] ?> เล่ม">
+                                    <i class="bi bi-journal me-1"></i>ยังไม่จัดชุด <strong><?= (int)$s['available_count'] ?></strong> เล่ม
+                                </span>
+                            <?php else: ?>
+                                <span class="badge bg-light text-muted border" title="ไม่มีเล่มที่ยังไม่จัดชุด">
+                                    <i class="bi bi-journal me-1"></i>ยังไม่จัดชุด 0 เล่ม
+                                </span>
+                            <?php endif; ?>
+                        </div>
+                    </td>
+                    <td data-label="ต้นทุนรวม" class="font-mono">
+                        <?= number_format((float)$s['total_cost'], 2) ?> ฿
+                    </td>
+                    <td data-label="" class="text-end">
                         <button type="button" class="btn btn-sm btn-outline-primary view-title-detail-btn" data-title="<?= htmlspecialchars($s['title']) ?>">
                             <i class="bi bi-eye"></i> ดูรายเล่ม
                         </button>
@@ -36,12 +126,12 @@
                 </tr>
             <?php endforeach; ?>
             <tr id="noSearchMatchRow" style="display: none;">
-                <td colspan="5" class="text-center text-muted py-4">
+                <td colspan="6" class="text-center text-muted py-4">
                     <i class="bi bi-search me-1"></i> ไม่พบชื่อเรื่องที่ตรงกับการค้นหา
                 </td>
             </tr>
             <?php if (empty($stockSummary)): ?>
-                <tr><td colspan="5" class="text-center text-muted">ยังไม่มีสต็อก</td></tr>
+                <tr><td colspan="6" class="text-center text-muted py-4">ยังไม่มีสต็อกคงเหลือ</td></tr>
             <?php endif; ?>
             </tbody>
         </table>
@@ -120,21 +210,36 @@ function renderStockDetail(data) {
     const purchases = data.purchases || [];
     const title = data.title || '';
 
+    const inBundleCount = books.filter(b => b.status === 'in_bundle').length;
+    const availableCount = books.filter(b => b.status === 'available').length;
+
     // สร้างตารางรายเล่ม
     let bookRows = '';
     books.forEach(b => {
+        let statusBadge = '';
+        if (b.status === 'available') {
+            statusBadge = '<span class="badge badge-status-available"><i class="bi bi-journal me-1"></i>ยังไม่จัดชุด</span>';
+        } else if (b.status === 'in_bundle') {
+            const bundleText = b.bundle_id ? `จัดชุดแล้ว (ชุด #${b.bundle_id})` : 'จัดชุดแล้ว';
+            statusBadge = `<span class="badge badge-status-in_bundle"><i class="bi bi-collection me-1"></i>${escapeHtml(bundleText)}</span>`;
+        } else if (b.status === 'sold') {
+            statusBadge = '<span class="badge badge-status-sold"><i class="bi bi-check2-circle me-1"></i>ขายแล้ว</span>';
+        } else {
+            statusBadge = `<span class="badge badge-status-${b.status}">${escapeHtml(b.status)}</span>`;
+        }
+
         bookRows += `
             <tr>
                 <td><strong>เล่ม ${b.volume}</strong></td>
                 <td>${parseFloat(b.unit_cost).toFixed(2)} ฿</td>
                 <td>${escapeHtml(b.purchase_date)}</td>
-                <td><span class="badge badge-status-${b.status}">${b.status}</span></td>
+                <td>${statusBadge}</td>
             </tr>
         `;
     });
 
     if (books.length === 0) {
-        bookRows = `<tr><td colspan="4" class="text-center text-muted py-3">ไม่พบข้อมูลรายเล่ม</td></tr>`;
+        bookRows = `<tr><td colspan="4" class="text-center text-muted py-3">ไม่พบเล่มคงเหลือของเรื่องนี้</td></tr>`;
     }
 
     // สร้างกล่องบิลซื้อ
@@ -182,8 +287,14 @@ function renderStockDetail(data) {
 
     stockModalBody.innerHTML = `
         <div class="card p-3 mb-4 shadow-sm border-0 bg-white">
-            <div class="panel-title mb-3 fw-bold text-dark">
-                <i class="bi bi-list-columns text-primary me-1"></i> รายเล่มทั้งหมดของ "${escapeHtml(title)}" (${books.length} เล่ม)
+            <div class="panel-title mb-3 fw-bold text-dark d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div>
+                    <i class="bi bi-list-columns text-primary me-1"></i> รายเล่มคงเหลือของ "${escapeHtml(title)}" (${books.length} เล่ม)
+                </div>
+                <div class="d-flex gap-2">
+                    <span class="badge badge-status-in_bundle"><i class="bi bi-collection me-1"></i>จัดชุดแล้ว ${inBundleCount} เล่ม</span>
+                    <span class="badge badge-status-available"><i class="bi bi-journal me-1"></i>ยังไม่จัดชุด ${availableCount} เล่ม</span>
+                </div>
             </div>
             <div class="table-responsive">
                 <table class="table table-sm table-hover align-middle mb-0">
