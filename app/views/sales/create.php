@@ -109,6 +109,7 @@
                     <div class="input-group">
                         <span class="input-group-text bg-white text-muted"><i class="bi bi-search"></i></span>
                         <input type="text" id="productSearchInput" class="form-control" placeholder="พิมพ์ค้นหาชื่อเรื่อง, เล่ม หรือชุดขาย..." autocomplete="off" required>
+                        <button class="btn btn-outline-secondary" type="button" id="clearProductSearchBtn" style="display: none;" title="ล้างการค้นหา"><i class="bi bi-x-lg"></i></button>
                         <button class="btn btn-outline-secondary dropdown-toggle dropdown-toggle-split" type="button" id="toggleProductMenuBtn" tabindex="-1" title="แสดงรายการทั้งหมด"></button>
                     </div>
                     <div class="searchable-select-menu shadow" id="productMenu"></div>
@@ -162,7 +163,7 @@
             </div>
             <div class="col-8 col-sm-6 col-md-2">
                 <label class="form-label" id="calcValueLabel">ราคาขาย (บาท)</label>
-                <input type="number" step="0.01" id="calcValue" class="form-control" value="0">
+                <input type="number" step="0.01" id="calcValue" class="form-control" placeholder="0.00" value="">
             </div>
             <div class="col-4 col-sm-12 col-md-2 d-flex align-items-end">
                 <button type="button" id="calcBtn" class="btn btn-outline-primary w-100"><i class="bi bi-calculator"></i> คำนวณ</button>
@@ -213,13 +214,40 @@
 <div class="card p-4">
     <div class="panel-title"><i class="bi bi-receipt"></i> รายการขายล่าสุด</div>
     <div class="table-responsive">
-        <table class="table table-sm table-flex-mobile">
-            <thead><tr><th>วันที่</th><th>รายการ</th><th>ช่องทาง</th><th>ราคาขาย</th><th>ค่าธรรมเนียม</th><th>ต้นทุน</th><th>กำไร</th><?php if ($__isAdmin): ?><th></th><?php endif; ?></tr></thead>
+        <table class="table table-sm table-flex-mobile align-middle">
+            <thead><tr><th>วันที่</th><th>รายการ</th><th>รหัสออเดอร์ซื้อเข้า</th><th>ช่องทาง</th><th>ราคาขาย</th><th>ค่าธรรมเนียม</th><th>ต้นทุน</th><th>กำไร</th><?php if ($__isAdmin): ?><th></th><?php endif; ?></tr></thead>
             <tbody>
             <?php foreach ($sales as $s): ?>
+                <?php
+                $sBills = [];
+                if (!empty($s['purchase_bills'])) {
+                    foreach (explode('||', $s['purchase_bills']) as $billStr) {
+                        $parts = explode(':', $billStr, 2);
+                        if (count($parts) === 2) {
+                            $sBills[] = ['id' => (int)$parts[0], 'code' => $parts[1]];
+                        }
+                    }
+                }
+                ?>
                 <tr>
                     <td data-label="วันที่"><?= htmlspecialchars($s['sale_date']) ?></td>
                     <td data-label="รายการ"><?= htmlspecialchars($s['title_snapshot']) ?></td>
+                    <td data-label="รหัสออเดอร์ซื้อเข้า">
+                        <?php if (!empty($sBills)): ?>
+                            <div class="d-flex flex-wrap gap-1 align-items-center">
+                                <?php foreach ($sBills as $bill): ?>
+                                    <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 view-purchase-btn font-mono"
+                                            data-id="<?= $bill['id'] ?>"
+                                            title="คลิกดูคำสั่งซื้อ <?= htmlspecialchars($bill['code']) ?>"
+                                            style="font-size:0.75rem;">
+                                        <i class="bi bi-receipt me-1"></i><?= htmlspecialchars($bill['code']) ?>
+                                    </button>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php else: ?>
+                            <span class="text-muted small">-</span>
+                        <?php endif; ?>
+                    </td>
                     <td data-label="ช่องทาง"><span class="badge bg-<?= $s['channel'] === 'shopee' ? 'warning text-dark' : 'primary' ?>"><?= strtoupper($s['channel']) ?></span></td>
                     <td data-label="ราคาขาย" class="font-mono"><?= number_format($s['sale_price'], 2) ?></td>
                     <td data-label="ค่าธรรมเนียม" class="font-mono text-danger"><?= number_format($s['fee_amount'], 2) ?></td>
@@ -241,10 +269,31 @@
                 </tr>
             <?php endforeach; ?>
             <?php if (empty($sales)): ?>
-                <tr><td colspan="<?= $__isAdmin ? 8 : 7 ?>" class="text-center text-muted">ยังไม่มีการขาย</td></tr>
+                <tr><td colspan="<?= $__isAdmin ? 9 : 8 ?>" class="text-center text-muted">ยังไม่มีการขาย</td></tr>
             <?php endif; ?>
             </tbody>
         </table>
+    </div>
+</div>
+
+<!-- Modal: รายละเอียดคำสั่งซื้อเข้า -->
+<div class="modal fade" id="purchaseDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title d-flex align-items-center gap-2">
+                    <i class="bi bi-receipt text-primary"></i>
+                    <span>รายละเอียดคำสั่งซื้อเข้า</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-3 p-md-4" id="purchaseDetailBody">
+                <div class="text-center text-muted py-4">กำลังโหลด...</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ปิด</button>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -276,59 +325,176 @@ function applyChannelUI() {
     shippingFeeBox.style.display     = isFb ? ''     : 'none';
     shopeeFeeAmountBox.style.display = isFb ? 'none' : '';
     feePercent.readOnly = isFb;
-    if (!isFb) recalcShopeeFeeAmount();
-    recalcFbPercent();
 }
 
-function recalcFbPercent() {
-    if (channel.value !== 'facebook') return;
-    const price = parseFloat(finalSalePrice.value) || 0;
-    const fee = parseFloat(shippingFee.value) || 0;
-    if (price > 0) {
-        feePercent.value = ((fee / price) * 100).toFixed(2);
+function getCost() {
+    const editCostEl = document.getElementById('editCost');
+    if (editCostEl) return parseFloat(editCostEl.value) || 0;
+    if (costDisplay) return parseFloat(costDisplay.value) || 0;
+    return 0;
+}
+
+function autoCalculate(trigger) {
+    const isFb = channel.value === 'facebook';
+    const cost = getCost();
+
+    // 1. ซิงค์ราคาขายและโหมดคำนวณ
+    if (trigger === 'calcValue') {
+        const valStr = calcValue ? calcValue.value.trim() : '';
+        const val = parseFloat(valStr) || 0;
+        if (calcMode && calcMode.value === 'by_target_profit') {
+            // โหมด % กำไรที่ต้องการ -> คำนวณราคาขาย
+            const targetNet = cost * (1 + (val / 100));
+            let p = 0;
+            if (isFb) {
+                const sFee = parseFloat(shippingFee.value) || 0;
+                p = targetNet + sFee;
+            } else {
+                const pct = parseFloat(feePercent.value) || 0;
+                const ratio = pct / 100;
+                p = ratio < 1 ? targetNet / (1 - ratio) : targetNet;
+            }
+            finalSalePrice.value = (valStr !== '' && p > 0) ? p.toFixed(2) : '';
+        } else {
+            // โหมดระบุราคาขาย -> ส่งต่อเข้าขายจริง
+            finalSalePrice.value = valStr;
+        }
+    } else if (trigger === 'finalSalePrice') {
+        const pStr = finalSalePrice.value.trim();
+        const p = parseFloat(pStr) || 0;
+        if (calcMode) {
+            if (calcMode.value === 'by_target_price') {
+                if (calcValue) calcValue.value = pStr;
+            } else if (calcMode.value === 'by_target_profit') {
+                let fee = 0;
+                if (isFb) {
+                    fee = parseFloat(shippingFee.value) || 0;
+                } else {
+                    if (lastFeeEdited === 'amount') {
+                        fee = parseFloat(shopeeFeeAmount.value) || 0;
+                    } else {
+                        fee = p * ((parseFloat(feePercent.value) || 0) / 100);
+                    }
+                }
+                const net = p - fee;
+                const prof = net - cost;
+                if (calcValue) {
+                    calcValue.value = (cost > 0 && p > 0) ? ((prof / cost) * 100).toFixed(2) : '';
+                }
+            }
+        }
+    } else if (trigger === 'calcMode') {
+        const p = parseFloat(finalSalePrice.value) || (calcValue ? parseFloat(calcValue.value) : 0) || 0;
+        if (calcMode.value === 'by_target_price') {
+            if (calcValueLabel) calcValueLabel.textContent = 'ราคาขาย (บาท)';
+            if (calcValue) calcValue.value = p > 0 ? p : '';
+        } else {
+            if (calcValueLabel) calcValueLabel.textContent = '% กำไรที่ต้องการ';
+            let fee = 0;
+            if (isFb) {
+                fee = parseFloat(shippingFee.value) || 0;
+            } else {
+                if (lastFeeEdited === 'amount') {
+                    fee = parseFloat(shopeeFeeAmount.value) || 0;
+                } else {
+                    fee = p * ((parseFloat(feePercent.value) || 0) / 100);
+                }
+            }
+            const net = p - fee;
+            const prof = net - cost;
+            if (calcValue) {
+                calcValue.value = (cost > 0 && p > 0) ? ((prof / cost) * 100).toFixed(2) : '';
+            }
+        }
+    } else if (trigger === 'feePercent') {
+        lastFeeEdited = 'percent';
+        if (calcMode && calcMode.value === 'by_target_profit') {
+            const val = parseFloat(calcValue.value) || 0;
+            const targetNet = cost * (1 + (val / 100));
+            const pct = parseFloat(feePercent.value) || 0;
+            const ratio = pct / 100;
+            const p = ratio < 1 ? targetNet / (1 - ratio) : targetNet;
+            finalSalePrice.value = p > 0 ? p.toFixed(2) : '';
+        }
+    } else if (trigger === 'shopeeFeeAmount') {
+        lastFeeEdited = 'amount';
+    } else if (trigger === 'shippingFee') {
+        if (calcMode && calcMode.value === 'by_target_profit') {
+            const val = parseFloat(calcValue.value) || 0;
+            const targetNet = cost * (1 + (val / 100));
+            const sFee = parseFloat(shippingFee.value) || 0;
+            const p = targetNet + sFee;
+            finalSalePrice.value = p > 0 ? p.toFixed(2) : '';
+        }
+    }
+
+    // 2. ราคาขายปัจจุบันที่จะใช้คำนวณสรุป
+    const curPrice = parseFloat(finalSalePrice.value) || (calcValue && calcMode && calcMode.value === 'by_target_price' ? parseFloat(calcValue.value) : 0) || 0;
+
+    // 3. ซิงค์ค่าธรรมเนียมระหว่าง feePercent ↔ feeAmount อัตโนมัติ
+    let feeAmt = 0;
+    if (isFb) {
+        feeAmt = parseFloat(shippingFee.value) || 0;
+        if (curPrice > 0 && trigger !== 'feePercent') {
+            feePercent.value = ((feeAmt / curPrice) * 100).toFixed(2);
+        } else if (curPrice === 0) {
+            feePercent.value = '0.00';
+        }
     } else {
-        feePercent.value = '0.00';
+        // Shopee
+        if (lastFeeEdited === 'amount') {
+            feeAmt = parseFloat(shopeeFeeAmount.value) || 0;
+            if (curPrice > 0 && trigger !== 'feePercent') {
+                feePercent.value = ((feeAmt / curPrice) * 100).toFixed(2);
+            }
+        } else {
+            const pct = parseFloat(feePercent.value) || 0;
+            feeAmt = curPrice > 0 ? (curPrice * pct / 100) : 0;
+            if (trigger !== 'shopeeFeeAmount') {
+                shopeeFeeAmount.value = feeAmt > 0 ? feeAmt.toFixed(2) : '';
+            }
+        }
+        // ซิงค์ค่าลง shippingFee (name="fee_amount") สำหรับส่ง POST
+        shippingFee.value = feeAmt > 0 ? feeAmt.toFixed(2) : '0';
+    }
+
+    // 4. สรุปผลกำไร/รายรับ และแสดงใน resultBox อัตโนมัติ
+    const netRevenue = curPrice - feeAmt;
+    const profit = netRevenue - cost;
+    const profitPercent = cost > 0 ? ((profit / cost) * 100) : 0;
+
+    const resultBox = document.getElementById('resultBox');
+    if (resultBox) {
+        if (curPrice > 0 || cost > 0) {
+            resultBox.style.display = 'flex';
+            document.getElementById('resSalePrice').textContent = curPrice.toFixed(2) + ' ฿';
+            document.getElementById('resFee').textContent = feeAmt.toFixed(2) + ' ฿';
+            document.getElementById('resNet').textContent = netRevenue.toFixed(2) + ' ฿';
+            const resProfit = document.getElementById('resProfit');
+            resProfit.textContent = profit.toFixed(2) + ' ฿ (' + profitPercent.toFixed(2) + '%)';
+            resProfit.className = 'fw-bold font-mono ' + (profit >= 0 ? 'text-success' : 'text-danger');
+        } else {
+            resultBox.style.display = 'none';
+        }
     }
 }
 
-// Shopee: sync fee_amount ↔ fee_percent สองทาง
-function recalcShopeeFeeAmount() {
-    if (channel.value !== 'shopee') return;
-    const price = parseFloat(finalSalePrice.value) || 0;
-    if (lastFeeEdited === 'amount') return; // ให้ sync จาก amount เป็นหลัก
-    const pct = parseFloat(feePercent.value) || 0;
-    const amt = price > 0 ? (price * pct / 100) : 0;
-    shopeeFeeAmount.value = amt > 0 ? amt.toFixed(2) : '';
-}
-
-function recalcShopeePercentFromAmount() {
-    if (channel.value !== 'shopee') return;
-    const price = parseFloat(finalSalePrice.value) || 0;
-    const amt   = parseFloat(shopeeFeeAmount.value) || 0;
-    if (price > 0) {
-        feePercent.value = ((amt / price) * 100).toFixed(2);
-    } else {
-        feePercent.value = '0.00';
-    }
-}
-
-shippingFee.addEventListener('input', recalcFbPercent);
-finalSalePrice.addEventListener('input', function () {
-    recalcFbPercent();
-    recalcShopeeFeeAmount();
-});
-feePercent.addEventListener('input', function () {
-    lastFeeEdited = 'percent';
-    recalcShopeeFeeAmount();
-});
-shopeeFeeAmount.addEventListener('input', function () {
-    lastFeeEdited = 'amount';
-    recalcShopeePercentFromAmount();
-});
+if (shippingFee) shippingFee.addEventListener('input', () => autoCalculate('shippingFee'));
+if (finalSalePrice) finalSalePrice.addEventListener('input', () => autoCalculate('finalSalePrice'));
+if (feePercent) feePercent.addEventListener('input', () => autoCalculate('feePercent'));
+if (shopeeFeeAmount) shopeeFeeAmount.addEventListener('input', () => autoCalculate('shopeeFeeAmount'));
+if (calcValue) calcValue.addEventListener('input', () => autoCalculate('calcValue'));
+if (calcMode) calcMode.addEventListener('change', () => autoCalculate('calcMode'));
 
 const productSearchInput = document.getElementById('productSearchInput');
+const clearProductSearchBtn = document.getElementById('clearProductSearchBtn');
 const productMenu = document.getElementById('productMenu');
 const toggleProductMenuBtn = document.getElementById('toggleProductMenuBtn');
+
+function updateClearSearchBtn() {
+    if (!clearProductSearchBtn || !productSearchInput) return;
+    clearProductSearchBtn.style.display = productSearchInput.value.trim() !== '' ? 'inline-block' : 'none';
+}
 
 // รวบรวมสินค้าทั้งหมด พร้อมจัดหมวดหมู่
 const allProducts = [];
@@ -463,11 +629,14 @@ function selectProduct(type, id, title, cost) {
     }
     costDisplay.value = parseFloat(cost || 0).toFixed(2);
     if (productMenu) productMenu.style.display = 'none';
+    updateClearSearchBtn();
+    autoCalculate('product');
 }
 
 if (productSearchInput) {
     productSearchInput.addEventListener('focus', () => {
         renderProductMenu(productSearchInput.value);
+        updateClearSearchBtn();
     });
 
     productSearchInput.addEventListener('input', () => {
@@ -480,12 +649,29 @@ if (productSearchInput) {
                 costDisplay.value = '0.00';
             }
         }
+        updateClearSearchBtn();
     });
 
     productSearchInput.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             if (productMenu) productMenu.style.display = 'none';
         }
+    });
+}
+
+if (clearProductSearchBtn) {
+    clearProductSearchBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (productSearchInput) {
+            productSearchInput.value = '';
+            productSearchInput.focus();
+        }
+        if (refId) refId.value = '';
+        if (costDisplay) costDisplay.value = '0.00';
+        updateClearSearchBtn();
+        renderProductMenu('');
+        autoCalculate('product');
     });
 }
 
@@ -505,6 +691,7 @@ document.addEventListener('click', (e) => {
                 const cur = allProducts.find(p => p.type === refType.value && String(p.id) === String(refId.value));
                 if (cur) productSearchInput.value = cur.title;
             }
+            updateClearSearchBtn();
         }
     }
 });
@@ -542,52 +729,22 @@ if (productSearchInput) {
     productSearchInput.value = '';
 }
 costDisplay.value = '0.00';
+updateClearSearchBtn();
 
-channel.addEventListener('change', function () {
-    const opt = channel.options[channel.selectedIndex];
-    feePercent.value = opt.dataset.fee;
-    lastFeeEdited = 'percent';
-    applyChannelUI();
-    if (channel.value === 'shopee') recalcShopeeFeeAmount();
-});
-
-calcMode.addEventListener('change', function () {
-    calcValueLabel.textContent = calcMode.value === 'by_target_price' ? 'ราคาขาย (บาท)' : '% กำไรที่ต้องการ';
-});
-
-document.getElementById('calcBtn').addEventListener('click', function () {
-    const params = new URLSearchParams({
-        ref_type: refType.value,
-        ref_id: refId.value,
-        channel: channel.value,
-        fee_percent: feePercent.value,
-        fee_amount: channel.value === 'shopee' ? shopeeFeeAmount.value : shippingFee.value,
-        mode: calcMode.value,
-        value: document.getElementById('calcValue').value,
+if (channel) {
+    channel.addEventListener('change', function () {
+        const opt = channel.options[channel.selectedIndex];
+        feePercent.value = opt.dataset.fee || '0';
+        lastFeeEdited = 'percent';
+        applyChannelUI();
+        autoCalculate('channel');
     });
+}
 
-    fetch(`${BASE_URL}/index.php?url=sales/calculate&` + params.toString())
-        .then(r => r.json())
-        .then(res => {
-            if (!res.success) { alert(res.message); return; }
-            const d = res.data;
-            document.getElementById('resultBox').style.display = 'flex';
-            document.getElementById('resSalePrice').textContent = d.sale_price.toFixed(2) + ' ฿';
-            document.getElementById('resFee').textContent = d.fee_amount.toFixed(2) + ' ฿';
-            document.getElementById('resNet').textContent = d.net_revenue.toFixed(2) + ' ฿';
-            document.getElementById('resProfit').textContent = d.profit_amount.toFixed(2) + ' ฿ (' + d.profit_percent + '%)';
-            document.getElementById('finalSalePrice').value = d.sale_price.toFixed(2);
-            if (channel.value === 'facebook') {
-                shippingFee.value = d.fee_amount.toFixed(2);
-                recalcFbPercent();
-            } else if (channel.value === 'shopee') {
-                // sync ทั้งสองช่องจากผลลัพธ์
-                feePercent.value = d.fee_percent.toFixed(2);
-                shopeeFeeAmount.value = d.fee_amount.toFixed(2);
-                lastFeeEdited = 'percent';
-            }
-        });
-});
+const calcBtn = document.getElementById('calcBtn');
+if (calcBtn) {
+    calcBtn.addEventListener('click', () => autoCalculate('calcValue'));
+}
 
 // ตอน submit: ตรวจสอบการเลือกสินค้า และสำหรับ Shopee ให้ใช้ค่าจาก shopeeFeeAmount
 document.getElementById('saleForm').addEventListener('submit', function (e) {
@@ -603,6 +760,7 @@ document.getElementById('saleForm').addEventListener('submit', function (e) {
 });
 
 applyChannelUI();
+autoCalculate('init');
 
 <?php if (!empty($editing)): ?>
 // Edit mode: ตั้งค่า channel/fb UI ตามข้อมูลเดิม
@@ -647,5 +805,122 @@ document.querySelectorAll('.delete-sale-btn').forEach(btn => {
             btn.innerHTML = originalHtml;
         }
     });
+});
+
+/* =================== Purchase Detail Modal =================== */
+let purchaseModal = null;
+const purchaseModalEl = document.getElementById('purchaseDetailModal');
+const purchaseModalBody = document.getElementById('purchaseDetailBody');
+
+function ensurePurchaseModal() {
+    if (!purchaseModal && typeof bootstrap !== 'undefined' && purchaseModalEl) {
+        purchaseModal = new bootstrap.Modal(purchaseModalEl);
+    }
+    return purchaseModal;
+}
+
+function renderPurchaseHtml(d) {
+    const p = d.purchase;
+    const items = p.items || [];
+    const images = d.images || [];
+    const totalBookCount = items.reduce((s, it) => s + (parseInt(it.book_count) || 0), 0);
+    const itemsTotal = items.reduce((s, it) => s + (parseFloat(it.item_price) || 0), 0);
+    const shipPerBook = totalBookCount > 0 ? (parseFloat(p.total_shipping_cost) / totalBookCount) : 0;
+
+    const headerHtml = `
+        <div class="mb-3 border-bottom pb-3">
+            <div class="d-flex justify-content-between align-items-start mb-2 flex-wrap gap-2">
+                <div>
+                    <span class="badge bg-secondary mb-1">บิล #${p.id}</span>
+                    <h5 class="mb-0 text-primary fw-bold"><i class="bi bi-receipt me-1"></i>${escapeHtml(p.purchase_code)}</h5>
+                </div>
+                <div class="text-muted small">
+                    <i class="bi bi-calendar3 me-1"></i>วันที่ซื้อ: <strong>${escapeHtml(p.purchase_date)}</strong>
+                </div>
+            </div>
+            ${p.note ? `<div class="small text-muted mb-2"><i class="bi bi-card-text me-1"></i>หมายเหตุ: ${escapeHtml(p.note)}</div>` : ''}
+            <div class="p-2 bg-light rounded d-flex flex-wrap gap-3 small">
+                <div>จำนวนเล่มรวม: <strong>${totalBookCount}</strong> เล่ม</div>
+                <div>ยอดซื้อ (ไม่รวมส่ง): <strong>${itemsTotal.toFixed(2)} ฿</strong></div>
+                <div>ค่าส่ง: <strong>${parseFloat(p.total_shipping_cost).toFixed(2)} ฿</strong></div>
+                <div>รวมทั้งบิล: <strong class="text-primary">${(itemsTotal + parseFloat(p.total_shipping_cost)).toFixed(2)} ฿</strong></div>
+            </div>
+        </div>
+    `;
+
+    let itemsHtml = '';
+    if (items.length === 0) {
+        itemsHtml = '<div class="alert alert-warning">ไม่มีรายการหนังสือในบิลนี้</div>';
+    } else {
+        itemsHtml = items.map((it, idx) => {
+            const volumes = it.volumes || [];
+            const volChips = volumes.map(v => {
+                const qty = parseInt(v.quantity) || 0;
+                const start = parseInt(v.volume_start);
+                const end = parseInt(v.volume_end);
+                const label = start === end ? `เล่ม ${start}` : `เล่ม ${start}-${end}`;
+                return `<span class="badge bg-info text-dark me-1">${label} (${qty})</span>`;
+            }).join('');
+            const unitCost = (parseFloat(it.unit_cost) || 0) + shipPerBook;
+            return `
+                <div class="mb-3 border rounded p-3 bg-white shadow-sm">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <strong><i class="bi bi-book text-primary me-1"></i> เรื่องที่ ${idx + 1}: ${escapeHtml(it.title)}</strong>
+                        <span class="badge bg-light text-dark border">${parseInt(it.book_count) || 0} เล่ม</span>
+                    </div>
+                    <div class="small my-2">${volChips || '<span class="text-muted">ไม่มีช่วงเล่ม</span>'}</div>
+                    <div class="row g-2 small pt-2 border-top">
+                        <div class="col-6 col-md-3">ราคาเรื่องนี้: <strong>${parseFloat(it.item_price).toFixed(2)} ฿</strong></div>
+                        <div class="col-6 col-md-3">ต้นทุน/เล่ม (ไม่รวมส่ง): <strong>${(parseFloat(it.unit_cost) || 0).toFixed(2)} ฿</strong></div>
+                        <div class="col-6 col-md-3">ค่าส่ง/เล่ม: <strong>${shipPerBook.toFixed(2)} ฿</strong></div>
+                        <div class="col-6 col-md-3">ต้นทุนรวม/เล่ม: <strong class="text-primary">${unitCost.toFixed(2)} ฿</strong></div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    let imagesHtml = '';
+    if (images.length > 0) {
+        const imgs = images.map(img => `
+            <a href="${BASE_URL}/${escapeHtml(img.image_path)}" target="_blank" title="คลิกดูภาพเต็ม">
+                <img src="${BASE_URL}/${escapeHtml(img.image_path)}"
+                     alt="slip"
+                     style="width:110px;height:110px;object-fit:cover;border:1px solid #ddd;border-radius:6px;">
+            </a>
+        `).join('');
+        imagesHtml = `
+            <div class="mt-3">
+                <div class="fw-semibold mb-2"><i class="bi bi-image text-primary me-1"></i> รูปสลิปการซื้อ (${images.length})</div>
+                <div class="d-flex flex-wrap gap-2">${imgs}</div>
+            </div>
+        `;
+    }
+
+    return headerHtml + itemsHtml + imagesHtml;
+}
+
+document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.view-purchase-btn');
+    if (!btn) return;
+    const id = btn.dataset.id;
+    if (!id) return;
+    const modal = ensurePurchaseModal();
+    if (!modal) { alert('Bootstrap ยังโหลดไม่เสร็จ กรุณาลองใหม่'); return; }
+    purchaseModalBody.innerHTML = `
+        <div class="text-center text-muted py-5">
+            <div class="spinner-border text-primary spinner-border-sm me-2" role="status"></div>
+            กำลังโหลดข้อมูลคำสั่งซื้อ...
+        </div>
+    `;
+    modal.show();
+    try {
+        const res = await fetch(`${BASE_URL}/index.php?url=purchase/detail/${id}`);
+        const json = await res.json();
+        if (!json.success) throw new Error(json.message || 'โหลดข้อมูลไม่สำเร็จ');
+        purchaseModalBody.innerHTML = renderPurchaseHtml(json.data);
+    } catch (err) {
+        purchaseModalBody.innerHTML = `<div class="alert alert-danger"><i class="bi bi-exclamation-triangle me-1"></i> ${escapeHtml(err.message)}</div>`;
+    }
 });
 </script>

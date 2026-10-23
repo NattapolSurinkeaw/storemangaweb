@@ -131,7 +131,40 @@ class SalesModel extends Model
 
     public function getAllSales(): array
     {
-        $stmt = $this->db->query("SELECT * FROM sales ORDER BY sale_date DESC, id DESC");
+        $stmt = $this->db->query(
+            "SELECT s.*,
+                CASE
+                    WHEN s.ref_type = 'book' THEN (
+                        SELECT CONCAT(p.id, ':', p.purchase_code)
+                        FROM inventory_books ib
+                        JOIN purchase_item_volumes piv ON piv.id = ib.purchase_item_volume_id
+                        JOIN purchase_items pi ON pi.id = piv.purchase_item_id
+                        JOIN purchases p ON p.id = pi.purchase_id
+                        WHERE ib.id = s.ref_id
+                        LIMIT 1
+                    )
+                    WHEN s.ref_type = 'bundle' THEN (
+                        SELECT GROUP_CONCAT(DISTINCT CONCAT(p.id, ':', p.purchase_code) ORDER BY p.id ASC SEPARATOR '||')
+                        FROM inventory_books ib
+                        JOIN purchase_item_volumes piv ON piv.id = ib.purchase_item_volume_id
+                        JOIN purchase_items pi ON pi.id = piv.purchase_item_id
+                        JOIN purchases p ON p.id = pi.purchase_id
+                        WHERE ib.bundle_id = s.ref_id
+                    )
+                    WHEN s.ref_type = 'bundle_group' THEN (
+                        SELECT GROUP_CONCAT(DISTINCT CONCAT(p.id, ':', p.purchase_code) ORDER BY p.id ASC SEPARATOR '||')
+                        FROM bundles b
+                        JOIN inventory_books ib ON ib.bundle_id = b.id
+                        JOIN purchase_item_volumes piv ON piv.id = ib.purchase_item_volume_id
+                        JOIN purchase_items pi ON pi.id = piv.purchase_item_id
+                        JOIN purchases p ON p.id = pi.purchase_id
+                        WHERE b.group_id = s.ref_id
+                    )
+                    ELSE NULL
+                END AS purchase_bills
+             FROM sales s
+             ORDER BY s.sale_date DESC, s.id DESC"
+        );
         return $stmt->fetchAll();
     }
 
