@@ -26,8 +26,8 @@ class StockController extends Controller
         $this->view('stock/index', [
             'stockSummary'   => $this->inventoryModel->getStockSummaryByTitle(),
             'selectedTitle'  => $title,
-            'books'          => $title !== '' ? $this->inventoryModel->getBooksByTitle($title) : [],
-            'purchases'      => $title !== '' ? $this->inventoryModel->getPurchasesByTitle($title) : [],
+            'books'          => $title !== '' ? $this->inventoryModel->getBooksByTitle($title, true) : [],
+            'purchases'      => $title !== '' ? $this->inventoryModel->getPurchasesByTitle($title, true) : [],
         ]);
     }
 
@@ -281,8 +281,8 @@ private function combineBundles(): void
                 echo json_encode(['success' => false, 'message' => 'ไม่พบชื่อเรื่อง']);
                 return;
             }
-            $books = $this->inventoryModel->getBooksByTitle($title);
-            $purchases = $this->inventoryModel->getPurchasesByTitle($title);
+            $books = $this->inventoryModel->getBooksByTitle($title, true);
+            $purchases = $this->inventoryModel->getPurchasesByTitle($title, true);
             echo json_encode([
                 'success' => true,
                 'data' => [

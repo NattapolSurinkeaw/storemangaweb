@@ -4,6 +4,34 @@ $totalBooksAll = array_sum(array_column($stockSummary, 'total_count'));
 $totalInBundleAll = array_sum(array_column($stockSummary, 'in_bundle_count'));
 $totalAvailableAll = array_sum(array_column($stockSummary, 'available_count'));
 $totalStockCostAll = array_sum(array_column($stockSummary, 'total_cost'));
+
+if (!function_exists('formatVolumeDisplay')) {
+    function formatVolumeDisplay(?string $volumeList, int $minVol, int $maxVol): string {
+        if ($volumeList === null || trim($volumeList) === '') {
+            return $minVol === $maxVol ? "เล่ม {$minVol}" : "เล่ม {$minVol} - {$maxVol}";
+        }
+        $vols = array_filter(array_map('intval', explode(',', $volumeList)), fn($v) => $v > 0);
+        $vols = array_values(array_unique($vols));
+        sort($vols);
+        if (empty($vols)) {
+            return $minVol === $maxVol ? "เล่ม {$minVol}" : "เล่ม {$minVol} - {$maxVol}";
+        }
+        $ranges = [];
+        $start = $vols[0];
+        $prev = $vols[0];
+        for ($i = 1; $i < count($vols); $i++) {
+            if ($vols[$i] === $prev + 1) {
+                $prev = $vols[$i];
+            } else {
+                $ranges[] = ($start === $prev) ? "{$start}" : "{$start}-{$prev}";
+                $start = $vols[$i];
+                $prev = $vols[$i];
+            }
+        }
+        $ranges[] = ($start === $prev) ? "{$start}" : "{$start}-{$prev}";
+        return "เล่ม " . implode(', ', $ranges);
+    }
+}
 ?>
 
 <div class="page-title d-flex justify-content-between align-items-center flex-wrap gap-2">
@@ -83,11 +111,9 @@ $totalStockCostAll = array_sum(array_column($stockSummary, 'total_cost'));
                         <strong><?= htmlspecialchars($s['title']) ?></strong>
                     </td>
                     <td data-label="เล่มที่มี">
-                        <?php if ((int)$s['min_volume'] === (int)$s['max_volume']): ?>
-                            <span class="badge bg-light text-dark border">เล่ม <?= (int)$s['min_volume'] ?></span>
-                        <?php else: ?>
-                            <span class="badge bg-light text-dark border">เล่ม <?= (int)$s['min_volume'] ?> - <?= (int)$s['max_volume'] ?></span>
-                        <?php endif; ?>
+                        <span class="badge bg-light text-dark border" title="เล่มที่ยังไม่ขาย: <?= htmlspecialchars($s['volume_list'] ?? '') ?>">
+                            <?= htmlspecialchars(formatVolumeDisplay($s['volume_list'] ?? null, (int)$s['min_volume'], (int)$s['max_volume'])) ?>
+                        </span>
                     </td>
                     <td data-label="จำนวนทั้งหมด">
                         <span class="fw-bold"><?= (int)$s['total_count'] ?></span> เล่ม
@@ -206,14 +232,15 @@ async function openTitleDetail(title) {
 }
 
 function renderStockDetail(data) {
-    const books = data.books || [];
+    const rawBooks = data.books || [];
+    const books = rawBooks.filter(b => b.status !== 'sold');
     const purchases = data.purchases || [];
     const title = data.title || '';
 
     const inBundleCount = books.filter(b => b.status === 'in_bundle').length;
     const availableCount = books.filter(b => b.status === 'available').length;
 
-    // สร้างตารางรายเล่ม
+    // สร้างตารางรายเล่ม (เฉพาะเล่มที่ยังไม่ขาย)
     let bookRows = '';
     books.forEach(b => {
         let statusBadge = '';
@@ -222,8 +249,6 @@ function renderStockDetail(data) {
         } else if (b.status === 'in_bundle') {
             const bundleText = b.bundle_id ? `จัดชุดแล้ว (ชุด #${b.bundle_id})` : 'จัดชุดแล้ว';
             statusBadge = `<span class="badge badge-status-in_bundle"><i class="bi bi-collection me-1"></i>${escapeHtml(bundleText)}</span>`;
-        } else if (b.status === 'sold') {
-            statusBadge = '<span class="badge badge-status-sold"><i class="bi bi-check2-circle me-1"></i>ขายแล้ว</span>';
         } else {
             statusBadge = `<span class="badge badge-status-${b.status}">${escapeHtml(b.status)}</span>`;
         }
@@ -239,10 +264,10 @@ function renderStockDetail(data) {
     });
 
     if (books.length === 0) {
-        bookRows = `<tr><td colspan="4" class="text-center text-muted py-3">ไม่พบเล่มคงเหลือของเรื่องนี้</td></tr>`;
+        bookRows = `<tr><td colspan="4" class="text-center text-muted py-3">ไม่พบเล่มคงเหลือของเรื่องนี้ (ขายหมดแล้ว หรือยังไม่มีสต็อก)</td></tr>`;
     }
 
-    // สร้างกล่องบิลซื้อ
+    // สร้างกล่องบิลซื้อ (เฉพาะบิลที่มีเล่มคงเหลือ)
     let purchaseCards = '';
     purchases.forEach(p => {
         let imgHtml = '';
@@ -269,7 +294,7 @@ function renderStockDetail(data) {
                             </div>
                             <div class="small text-muted mt-1">
                                 วันที่ซื้อ: ${escapeHtml(p.purchase_date)}
-                                | เล่มของเรื่องนี้: <strong>${parseInt(p.book_count_for_title)}</strong> เล่ม
+                                | เล่มคงเหลือ: <strong>${parseInt(p.book_count_for_title)}</strong> เล่ม
                                 | ค่าส่ง: ${parseFloat(p.total_shipping_cost).toFixed(2)} ฿
                             </div>
                             ${p.note ? `<div class="small text-muted mt-1">หมายเหตุ: ${escapeHtml(p.note)}</div>` : ''}
@@ -282,7 +307,7 @@ function renderStockDetail(data) {
     });
 
     if (purchases.length === 0) {
-        purchaseCards = `<div class="col-12"><div class="text-muted fst-italic">ไม่พบข้อมูลบิลซื้อที่เกี่ยวข้อง</div></div>`;
+        purchaseCards = `<div class="col-12"><div class="text-muted fst-italic">ไม่พบบิลซื้อที่มีเล่มคงเหลือของเรื่องนี้</div></div>`;
     }
 
     stockModalBody.innerHTML = `
@@ -306,7 +331,7 @@ function renderStockDetail(data) {
 
         <div class="card p-3 shadow-sm border-0 bg-white">
             <div class="panel-title mb-3 fw-bold text-dark">
-                <i class="bi bi-image text-primary me-1"></i> ที่มาของสต็อก — บิลซื้อที่เกี่ยวข้อง (${purchases.length} บิล)
+                <i class="bi bi-image text-primary me-1"></i> ที่มาของสต็อกคงเหลือ — บิลซื้อที่เกี่ยวข้อง (${purchases.length} บิล)
             </div>
             <div class="row g-3">
                 ${purchaseCards}

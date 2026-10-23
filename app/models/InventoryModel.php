@@ -16,10 +16,12 @@ class InventoryModel extends Model
                     SUM(CASE WHEN status = 'available' THEN 1 ELSE 0 END) AS available_count,
                     MIN(volume) AS min_volume,
                     MAX(volume) AS max_volume,
+                    GROUP_CONCAT(DISTINCT volume ORDER BY volume ASC SEPARATOR ', ') AS volume_list,
                     SUM(unit_cost) AS total_cost
              FROM inventory_books
              WHERE status != 'sold'
              GROUP BY title
+             HAVING total_count > 0
              ORDER BY title ASC"
         );
         return $stmt->fetchAll();
@@ -171,25 +173,26 @@ class InventoryModel extends Model
 
     /**
      * ดึงรายการบิลซื้อทั้งหมดที่เกี่ยวข้องกับเรื่องหนึ่งๆ พร้อมรูปภาพแนบ
-     * ใช้แสดงที่มาของสต็อกในหน้า stock/index
+     * ใช้แสดงที่มาของสต็อกในหน้า stock/index (ค่าเริ่มต้นกรองเฉพาะเล่มที่ยังไม่ขาย)
      */
-    public function getPurchasesByTitle(string $title): array
+    public function getPurchasesByTitle(string $title, bool $unsoldOnly = true): array
     {
         // ดึงบิลซื้อที่เกี่ยวข้อง (มีเล่มของเรื่องนี้อยู่) + จำนวนเล่มของเรื่องนี้ในบิลนั้น
         // หมายเหตุ: PDO::ATTR_EMULATE_PREPARES=false ทำให้ MySQL นับ placeholder ซ้ำเป็นคนละตัว
         // จึงต้องใช้ชื่อ placeholder แยกกัน (:title_a, :title_b) และ bind ทั้งสองค่า
+        $soldCond = $unsoldOnly ? "AND ib.status != 'sold'" : "";
         $stmt = $this->db->prepare(
             "SELECT p.id, p.purchase_code, p.purchase_date, p.total_shipping_cost, p.note,
                     (SELECT COUNT(*) FROM inventory_books ib
                        JOIN purchase_item_volumes piv ON piv.id = ib.purchase_item_volume_id
                        JOIN purchase_items pi ON pi.id = piv.purchase_item_id
-                      WHERE pi.purchase_id = p.id AND ib.title = :title_a) AS book_count_for_title
+                      WHERE pi.purchase_id = p.id AND ib.title = :title_a {$soldCond}) AS book_count_for_title
              FROM purchases p
              WHERE EXISTS (
                  SELECT 1 FROM inventory_books ib
                  JOIN purchase_item_volumes piv ON piv.id = ib.purchase_item_volume_id
                  JOIN purchase_items pi ON pi.id = piv.purchase_item_id
-                 WHERE pi.purchase_id = p.id AND ib.title = :title_b
+                 WHERE pi.purchase_id = p.id AND ib.title = :title_b {$soldCond}
              )
              ORDER BY p.purchase_date DESC, p.id DESC"
         );
