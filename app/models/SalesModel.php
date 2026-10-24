@@ -166,7 +166,7 @@ class SalesModel extends Model
                     ELSE NULL
                 END AS purchase_bills
              FROM sales s
-             ORDER BY s.sale_date DESC, s.id DESC"
+             ORDER BY s.sale_date DESC"
         );
         return $stmt->fetchAll();
     }
