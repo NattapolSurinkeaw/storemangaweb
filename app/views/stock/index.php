@@ -233,7 +233,7 @@ async function openTitleDetail(title) {
 
 function renderStockDetail(data) {
     const rawBooks = data.books || [];
-    const books = rawBooks.filter(b => b.status !== 'sold');
+    const books = rawBooks.filter(b => b.status !== 'sold' && b.bundle_status !== 'sold');
     const purchases = data.purchases || [];
     const title = data.title || '';
 

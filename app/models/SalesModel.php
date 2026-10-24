@@ -116,7 +116,10 @@ class SalesModel extends Model
                 $updGroup = $this->db->prepare("UPDATE bundle_groups SET status = 'sold' WHERE id = :id");
                 $updGroup->execute([':id' => $refId]);
                 $updBooks = $this->db->prepare(
-                    "UPDATE inventory_books SET status = 'sold' WHERE bundle_id IN (SELECT id FROM bundles WHERE group_id = :gid)"
+                    "UPDATE inventory_books ib
+                     JOIN bundles b ON ib.bundle_id = b.id
+                     SET ib.status = 'sold'
+                     WHERE b.group_id = :gid"
                 );
                 $updBooks->execute([':gid' => $refId]);
             }
@@ -267,7 +270,10 @@ class SalesModel extends Model
                 $u2 = $this->db->prepare("UPDATE bundle_groups SET status = 'available' WHERE id = :id");
                 $u2->execute([':id' => $refId]);
                 $uBooks = $this->db->prepare(
-                    "UPDATE inventory_books SET status = 'in_bundle' WHERE bundle_id IN (SELECT id FROM bundles WHERE group_id = :gid)"
+                    "UPDATE inventory_books ib
+                     JOIN bundles b ON ib.bundle_id = b.id
+                     SET ib.status = 'in_bundle'
+                     WHERE b.group_id = :gid"
                 );
                 $uBooks->execute([':gid' => $refId]);
             } else {
