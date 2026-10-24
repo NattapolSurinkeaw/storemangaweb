@@ -430,9 +430,14 @@
                                         <tr>
                                             <td class="text-nowrap"><?= htmlspecialchars($p['purchase_date']) ?></td>
                                             <td>
-                                                <span class="font-mono badge bg-light text-dark border">
-                                                    <?= htmlspecialchars($p['purchase_code']) ?>
-                                                </span>
+                                                <button type="button" 
+                                                        class="btn btn-sm view-purchase-btn font-mono d-inline-flex align-items-center gap-1"
+                                                        data-id="<?= (int) $p['id'] ?>"
+                                                        data-code="<?= htmlspecialchars($p['purchase_code']) ?>"
+                                                        title="คลิกดูคำสั่งซื้อ <?= htmlspecialchars($p['purchase_code']) ?>">
+                                                    <i class="bi bi-receipt text-primary"></i>
+                                                    <span><?= htmlspecialchars($p['purchase_code']) ?></span>
+                                                </button>
                                             </td>
                                             <td style="max-width: 280px;">
                                                 <div class="text-truncate fw-semibold text-dark" title="<?= htmlspecialchars($p['item_titles'] ?? '') ?>">
@@ -485,7 +490,31 @@
                                         <tr>
                                             <td class="text-nowrap"><?= htmlspecialchars($s['sale_date']) ?></td>
                                             <td class="fw-semibold text-dark" style="max-width: 250px;">
-                                                <?= htmlspecialchars($s['title_snapshot']) ?>
+                                                <div><?= htmlspecialchars($s['title_snapshot']) ?></div>
+                                                <?php
+                                                $sBills = [];
+                                                if (!empty($s['purchase_bills'])) {
+                                                    foreach (explode('||', $s['purchase_bills']) as $billStr) {
+                                                        $parts = explode(':', $billStr, 2);
+                                                        if (count($parts) === 2) {
+                                                            $sBills[] = ['id' => (int) $parts[0], 'code' => $parts[1]];
+                                                        }
+                                                    }
+                                                }
+                                                ?>
+                                                <?php if (!empty($sBills)): ?>
+                                                    <div class="d-flex flex-wrap gap-1 mt-1">
+                                                        <?php foreach ($sBills as $bill): ?>
+                                                            <button type="button" class="btn btn-sm view-purchase-btn py-0 px-1 font-mono"
+                                                                    data-id="<?= $bill['id'] ?>"
+                                                                    data-code="<?= htmlspecialchars($bill['code']) ?>"
+                                                                    title="คลิกดูคำสั่งซื้อ <?= htmlspecialchars($bill['code']) ?>"
+                                                                    style="font-size: 0.72rem;">
+                                                                <i class="bi bi-receipt text-primary me-1"></i><?= htmlspecialchars($bill['code']) ?>
+                                                            </button>
+                                                        <?php endforeach; ?>
+                                                    </div>
+                                                <?php endif; ?>
                                             </td>
                                             <td class="text-center">
                                                 <span class="badge <?= $s['channel'] === 'shopee' ? 'badge-channel-shopee' : 'badge-channel-fb' ?>">
@@ -514,8 +543,61 @@
     </div>
 </div>
 
+<!-- Modal: รายละเอียดคำสั่งซื้อ / บิลซื้อ -->
+<div class="modal fade" id="purchaseDetailModal" tabindex="-1" aria-labelledby="purchaseModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 14px; overflow: hidden;">
+            <div class="modal-header border-bottom py-3 px-4" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: #ffffff;">
+                <div class="d-flex align-items-center gap-2">
+                    <div style="width: 38px; height: 38px; border-radius: 10px; background: rgba(59, 130, 246, 0.2); display: flex; align-items: center; justify-content: center; color: #60a5fa;">
+                        <i class="bi bi-receipt-cutoff fs-5"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0 text-white" id="purchaseModalLabel">รายละเอียดคำสั่งซื้อ</h5>
+                        <div class="small text-white-50" id="purchaseModalSub">ข้อมูลรายการบิลและการคิดต้นทุน</div>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-3 p-md-4" id="purchaseDetailBody" style="background: #f8fafc; min-height: 250px;">
+                <div class="text-center text-muted py-5">
+                    <div class="spinner-border text-primary spinner-border-sm me-2" role="status"></div>
+                    <span>กำลังโหลดข้อมูลคำสั่งซื้อ...</span>
+                </div>
+            </div>
+            <div class="modal-footer bg-white border-top py-2 px-4 d-flex justify-content-between align-items-center">
+                <div id="purchaseModalFooterActions"></div>
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">ปิด</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- สไตล์เฉพาะหน้ารายงาน -->
 <style>
+/* Purchase detail button & modal */
+.view-purchase-btn {
+    background-color: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    color: #1e293b;
+    font-size: 0.82rem;
+    font-weight: 500;
+    padding: 3px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease-in-out;
+}
+.view-purchase-btn:hover {
+    background-color: #e0e7ff;
+    border-color: #6366f1;
+    color: #4338ca;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(99, 102, 241, 0.15);
+}
+.slip-thumbnail:hover img {
+    transform: scale(1.04);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.18);
+}
 /* Preset buttons */
 .btn-preset {
     border: 1px solid var(--color-border);
@@ -645,6 +727,12 @@
 
 <!-- Chart.js Logic Script -->
 <script>
+const BASE_URL = "<?= BASE_URL ?>";
+
+function escapeHtml(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
 // ข้อมูล Timeline จาก PHP
 const timelineData = <?= json_encode($timeline, JSON_UNESCAPED_UNICODE) ?>;
 let reportChartInstance = null;
@@ -883,6 +971,251 @@ function applyPreset(preset) {
 
 function onDateChanged() {
     document.getElementById('inputPreset').value = 'custom';
+}
+
+// Purchase Detail Modal Logic
+let purchaseModal = null;
+const purchaseModalEl = document.getElementById('purchaseDetailModal');
+const purchaseModalBody = document.getElementById('purchaseDetailBody');
+const purchaseModalFooterActions = document.getElementById('purchaseModalFooterActions');
+
+function ensurePurchaseModal() {
+    if (!purchaseModal && typeof bootstrap !== 'undefined' && purchaseModalEl) {
+        purchaseModal = new bootstrap.Modal(purchaseModalEl);
+    }
+    return purchaseModal;
+}
+
+async function openPurchaseDetail(idOrCode) {
+    const modal = ensurePurchaseModal();
+    if (!modal) {
+        alert('ระบบยังโหลดไม่สมบูรณ์ กรุณาลองใหม่อีกครั้ง');
+        return;
+    }
+    
+    if (purchaseModalFooterActions) {
+        purchaseModalFooterActions.innerHTML = '';
+    }
+    
+    purchaseModalBody.innerHTML = `
+        <div class="text-center text-muted py-5">
+            <div class="spinner-border text-primary spinner-border-sm me-2" role="status"></div>
+            <span>กำลังโหลดข้อมูลคำสั่งซื้อ...</span>
+        </div>
+    `;
+    modal.show();
+
+    try {
+        const res = await fetch(`${BASE_URL}/index.php?url=purchase/detail/${encodeURIComponent(idOrCode)}`);
+        const json = await res.json();
+        if (!json.success) throw new Error(json.message || 'ไม่สามารถโหลดข้อมูลคำสั่งซื้อได้');
+        
+        renderPurchaseModalContent(json.data);
+    } catch (err) {
+        purchaseModalBody.innerHTML = `
+            <div class="alert alert-danger d-flex align-items-center mb-0">
+                <i class="bi bi-exclamation-triangle-fill fs-5 me-2"></i>
+                <div>${escapeHtml(err.message)}</div>
+            </div>
+        `;
+    }
+}
+
+function renderPurchaseModalContent(d) {
+    const p = d.purchase;
+    const items = p.items || [];
+    const images = d.images || [];
+    const totalBookCount = items.reduce((s, it) => s + (parseInt(it.book_count) || 0), 0);
+    const itemsTotal = items.reduce((s, it) => s + (parseFloat(it.item_price) || 0), 0);
+    const shipping = parseFloat(p.total_shipping_cost) || 0;
+    const grandTotal = itemsTotal + shipping;
+    const shipPerBook = totalBookCount > 0 ? (shipping / totalBookCount) : 0;
+
+    const subEl = document.getElementById('purchaseModalSub');
+    if (subEl) {
+        subEl.textContent = `รหัสบิล ${p.purchase_code} • วันที่ซื้อ ${p.purchase_date}`;
+    }
+
+    const headerHtml = `
+        <div class="card border-0 shadow-sm mb-3" style="border-radius: 10px; overflow: hidden;">
+            <div class="card-body p-3 p-md-4 bg-white">
+                <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+                    <div>
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <span class="badge bg-primary fs-6 font-mono px-3 py-2 shadow-xs">
+                                <i class="bi bi-receipt me-1"></i>${escapeHtml(p.purchase_code)}
+                            </span>
+                            <span class="badge bg-light text-dark border">ID #${p.id}</span>
+                        </div>
+                    </div>
+                    <div class="text-muted small d-flex align-items-center gap-1">
+                        <i class="bi bi-calendar3 text-primary"></i>
+                        <span>วันที่ซื้อ: <strong>${escapeHtml(p.purchase_date)}</strong></span>
+                    </div>
+                </div>
+
+                ${p.note ? `
+                    <div class="p-2 px-3 mb-3 rounded bg-warning-subtle text-dark border border-warning-subtle small d-flex align-items-start gap-2">
+                        <i class="bi bi-chat-left-text-fill text-warning mt-1"></i>
+                        <div><strong>หมายเหตุ:</strong> ${escapeHtml(p.note)}</div>
+                    </div>
+                ` : ''}
+
+                <div class="row g-2 text-center">
+                    <div class="col-6 col-md-3">
+                        <div class="p-2 rounded bg-light border">
+                            <div class="text-muted small">จำนวนเล่มรวม</div>
+                            <div class="fs-5 fw-bold text-dark">${totalBookCount} <small class="fw-normal text-muted" style="font-size:0.75rem;">เล่ม</small></div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="p-2 rounded bg-light border">
+                            <div class="text-muted small">ยอดซื้อ (ไม่รวมส่ง)</div>
+                            <div class="fs-5 fw-bold text-dark font-mono">${itemsTotal.toFixed(2)} <small class="fw-normal text-muted" style="font-size:0.75rem;">฿</small></div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="p-2 rounded bg-light border">
+                            <div class="text-muted small">ค่าส่งทั้งบิล</div>
+                            <div class="fs-5 fw-bold text-muted font-mono">${shipping.toFixed(2)} <small class="fw-normal text-muted" style="font-size:0.75rem;">฿</small></div>
+                            <div class="text-muted" style="font-size:0.7rem;">เฉลี่ย ${shipPerBook.toFixed(2)} ฿/เล่ม</div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="p-2 rounded bg-primary-subtle border border-primary-subtle">
+                            <div class="text-primary small fw-semibold">รวมทั้งบิล (สุทธิ)</div>
+                            <div class="fs-5 fw-bold text-primary font-mono">${grandTotal.toFixed(2)} <small class="fw-normal" style="font-size:0.75rem;">฿</small></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    let itemsHtml = `
+        <div class="mb-3">
+            <h6 class="fw-bold text-dark mb-2 d-flex align-items-center gap-1">
+                <i class="bi bi-collection text-primary"></i> รายการหนังสือในบิล (${items.length} เรื่อง)
+            </h6>
+    `;
+
+    if (items.length === 0) {
+        itemsHtml += `<div class="alert alert-warning mb-0">ไม่มีรายการหนังสือในบิลนี้</div>`;
+    } else {
+        itemsHtml += items.map((it, idx) => {
+            const volumes = it.volumes || [];
+            const volChips = volumes.map(v => {
+                const qty = parseInt(v.quantity) || 0;
+                const start = parseInt(v.volume_start);
+                const end = parseInt(v.volume_end);
+                const label = start === end ? `เล่ม ${start}` : `เล่ม ${start}-${end}`;
+                return `<span class="badge bg-light text-dark border me-1 my-1"><i class="bi bi-journal-bookmark me-1 text-primary"></i>${label} <span class="badge bg-primary-subtle text-primary rounded-pill ms-1">${qty} เล่ม</span></span>`;
+            }).join('');
+
+            const itemPrice = parseFloat(it.item_price) || 0;
+            const itemQty = parseInt(it.book_count) || 0;
+            const baseUnitCost = itemQty > 0 ? (itemPrice / itemQty) : 0;
+            const netUnitCost = baseUnitCost + shipPerBook;
+
+            return `
+                <div class="card border-0 shadow-sm mb-2" style="border-radius: 10px;">
+                    <div class="card-body p-3">
+                        <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                            <div>
+                                <span class="badge bg-secondary-subtle text-secondary me-1">เรื่องที่ ${idx + 1}</span>
+                                <strong class="fs-6 text-dark">${escapeHtml(it.title)}</strong>
+                            </div>
+                            <span class="badge bg-primary-subtle text-primary fw-semibold px-2 py-1">
+                                รวม ${itemQty} เล่ม
+                            </span>
+                        </div>
+
+                        <div class="mb-2">
+                            ${volChips || '<span class="text-muted small">ไม่มีข้อมูลเล่ม</span>'}
+                        </div>
+
+                        <div class="p-2 rounded bg-light border small">
+                            <div class="row g-2">
+                                <div class="col-6 col-md-3">
+                                    <span class="text-muted">ราคารวมเรื่องนี้:</span>
+                                    <div class="fw-bold text-dark font-mono">${itemPrice.toFixed(2)} ฿</div>
+                                </div>
+                                <div class="col-6 col-md-3">
+                                    <span class="text-muted">ต้นทุน/เล่ม (ไม่รวมส่ง):</span>
+                                    <div class="fw-semibold text-dark font-mono">${baseUnitCost.toFixed(2)} ฿</div>
+                                </div>
+                                <div class="col-6 col-md-3">
+                                    <span class="text-muted">ค่าส่งเฉลี่ย/เล่ม:</span>
+                                    <div class="fw-semibold text-muted font-mono">+${shipPerBook.toFixed(2)} ฿</div>
+                                </div>
+                                <div class="col-6 col-md-3">
+                                    <span class="text-muted">ต้นทุนสุทธิ/เล่ม:</span>
+                                    <div class="fw-bold text-primary font-mono">${netUnitCost.toFixed(2)} ฿</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+    itemsHtml += `</div>`;
+
+    let imagesHtml = '';
+    if (images.length > 0) {
+        const imgs = images.map(img => `
+            <a href="${BASE_URL}/${escapeHtml(img.image_path)}" target="_blank" rel="noopener" class="d-inline-block position-relative slip-thumbnail" title="คลิกเพื่อดูภาพขนาดเต็ม">
+                <img src="${BASE_URL}/${escapeHtml(img.image_path)}" 
+                     alt="slip"
+                     style="width: 100px; height: 100px; object-fit: cover; border-radius: 8px; border: 1px solid #e2e8f0; transition: transform 0.2s ease, box-shadow 0.2s ease;">
+                <span class="position-absolute bottom-0 start-0 w-100 text-center bg-dark bg-opacity-50 text-white" style="font-size: 0.65rem; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px;">
+                    <i class="bi bi-zoom-in"></i> ดูภาพ
+                </span>
+            </a>
+        `).join('');
+
+        imagesHtml = `
+            <div class="card border-0 shadow-sm" style="border-radius: 10px;">
+                <div class="card-body p-3">
+                    <div class="fw-bold text-dark mb-2 d-flex align-items-center gap-1">
+                        <i class="bi bi-images text-primary"></i> รูปภาพแนบ / สลิป (${images.length} รูป)
+                    </div>
+                    <div class="d-flex flex-wrap gap-2">
+                        ${imgs}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    purchaseModalBody.innerHTML = headerHtml + itemsHtml + imagesHtml;
+
+    if (purchaseModalFooterActions) {
+        purchaseModalFooterActions.innerHTML = `
+            <a href="${BASE_URL}/index.php?url=purchase/create&edit=${p.id}" class="btn btn-outline-primary btn-sm d-inline-flex align-items-center gap-1">
+                <i class="bi bi-pencil-square"></i>
+                <span>ไปที่หน้าแก้ไขบิลนี้</span>
+            </a>
+        `;
+    }
+}
+
+// Global click event delegation for view-purchase-btn
+document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.view-purchase-btn');
+    if (!btn) return;
+    e.preventDefault();
+    const id = btn.dataset.id || btn.dataset.code;
+    if (id) {
+        openPurchaseDetail(id);
+    }
+});
+
+// Check URL params for direct bill opening
+const urlParams = new URLSearchParams(window.location.search);
+const billToOpen = urlParams.get('view_bill');
+if (billToOpen) {
+    openPurchaseDetail(billToOpen);
 }
 
 // Initialise when DOM ready

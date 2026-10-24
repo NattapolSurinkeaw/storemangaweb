@@ -327,6 +327,15 @@ class PurchaseModel extends Model
         return $purchase;
     }
 
+    public function getPurchaseByCode(string $code): ?array
+    {
+        $stmt = $this->db->prepare("SELECT id FROM purchases WHERE purchase_code = :code LIMIT 1");
+        $stmt->execute([':code' => trim($code)]);
+        $id = $stmt->fetchColumn();
+        if (!$id) return null;
+        return $this->getPurchaseWithItems((int) $id);
+    }
+
     public function getTotalPurchaseAmount(): float
     {
         $stmt = $this->db->query(
