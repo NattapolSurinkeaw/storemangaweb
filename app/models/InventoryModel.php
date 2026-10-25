@@ -5,22 +5,105 @@
  */
 class InventoryModel extends Model
 {
+    public function __construct()
+    {
+        parent::__construct();
+        $this->syncSoldBooksStatus();
+    }
+
+    /**
+     * ซิงค์สถานะหนังสือที่ขายแล้วให้ถูกต้อง (Self-healing data sync)
+     * แก้ปัญหาข้อมูลย้อนหลัง: กรณีที่ขาย bundle หรือขายเดี่ยวไปแล้ว แต่สถานะใน inventory_books ยังค้างเป็น 'in_bundle' หรือ 'available'
+     */
+    public function syncSoldBooksStatus(): void
+    {
+        try {
+            // 1. ซิงค์สถานะ bundles ที่ถูกบันทึกขายในตาราง sales แล้ว
+            $this->db->exec(
+                "UPDATE bundles b
+                 JOIN sales s ON s.ref_type = 'bundle' AND s.ref_id = b.id
+                 SET b.status = 'sold'
+                 WHERE b.status != 'sold'"
+            );
+
+            // 2. ซิงค์สถานะ bundle_groups ที่ถูกบันทึกขายในตาราง sales แล้ว
+            $this->db->exec(
+                "UPDATE bundle_groups bg
+                 JOIN sales s ON s.ref_type = 'bundle_group' AND s.ref_id = bg.id
+                 SET bg.status = 'sold'
+                 WHERE bg.status != 'sold'"
+            );
+
+            // 3. เล่มที่อยู่ใน bundle ที่มีสถานะ 'sold' ให้เปลี่ยนเป็น 'sold'
+            $this->db->exec(
+                "UPDATE inventory_books ib
+                 JOIN bundles b ON ib.bundle_id = b.id
+                 SET ib.status = 'sold'
+                 WHERE b.status = 'sold' AND ib.status != 'sold'"
+            );
+
+            // 4. เล่มที่อยู่ใน bundle group ที่มีสถานะ 'sold' ให้เปลี่ยนเป็น 'sold'
+            $this->db->exec(
+                "UPDATE inventory_books ib
+                 JOIN bundles b ON ib.bundle_id = b.id
+                 JOIN bundle_groups bg ON b.group_id = bg.id
+                 SET ib.status = 'sold'
+                 WHERE bg.status = 'sold' AND ib.status != 'sold'"
+            );
+
+            // 5. เล่มที่ถูกขายเดี่ยวตามตาราง sales (ref_type = 'book')
+            $this->db->exec(
+                "UPDATE inventory_books ib
+                 JOIN sales s ON s.ref_type = 'book' AND s.ref_id = ib.id
+                 SET ib.status = 'sold'
+                 WHERE ib.status != 'sold'"
+            );
+
+            // 6. เล่มที่ถูกขายแบบ bundle ตามตาราง sales (ref_type = 'bundle')
+            $this->db->exec(
+                "UPDATE inventory_books ib
+                 JOIN sales s ON s.ref_type = 'bundle' AND s.ref_id = ib.bundle_id
+                 SET ib.status = 'sold'
+                 WHERE ib.status != 'sold'"
+            );
+
+            // 7. เล่มที่ถูกขายแบบ bundle_group ตามตาราง sales (ref_type = 'bundle_group')
+            $this->db->exec(
+                "UPDATE inventory_books ib
+                 JOIN bundles b ON ib.bundle_id = b.id
+                 JOIN sales s ON s.ref_type = 'bundle_group' AND s.ref_id = b.group_id
+                 SET ib.status = 'sold'
+                 WHERE ib.status != 'sold'"
+            );
+        } catch (Throwable $e) {
+            error_log('syncSoldBooksStatus failed: ' . $e->getMessage());
+        }
+    }
+
     /** สรุปสต็อกคงเหลือแยกตามชื่อเรื่อง (แสดงหนังสือทั้งหมดที่ยังไม่ขาย) พร้อมแยกจำนวนจัดชุดแล้วและยังไม่จัดชุด */
     public function getStockSummaryByTitle(): array
     {
+        $this->syncSoldBooksStatus();
+
         $stmt = $this->db->query(
-            "SELECT title,
+            "SELECT ib.title,
                     COUNT(*) AS total_count,
                     COUNT(*) AS book_count,
-                    SUM(CASE WHEN status = 'in_bundle' THEN 1 ELSE 0 END) AS in_bundle_count,
-                    SUM(CASE WHEN status = 'available' THEN 1 ELSE 0 END) AS available_count,
-                    MIN(volume) AS min_volume,
-                    MAX(volume) AS max_volume,
-                    SUM(unit_cost) AS total_cost
-             FROM inventory_books
-             WHERE status != 'sold'
-             GROUP BY title
-             ORDER BY title ASC"
+                    SUM(CASE WHEN ib.status = 'in_bundle' AND (b.id IS NULL OR b.status != 'sold') AND (bg.id IS NULL OR bg.status != 'sold') THEN 1 ELSE 0 END) AS in_bundle_count,
+                    SUM(CASE WHEN ib.status = 'available' THEN 1 ELSE 0 END) AS available_count,
+                    MIN(ib.volume) AS min_volume,
+                    MAX(ib.volume) AS max_volume,
+                    GROUP_CONCAT(DISTINCT ib.volume ORDER BY ib.volume ASC SEPARATOR ', ') AS volume_list,
+                    SUM(ib.unit_cost) AS total_cost
+             FROM inventory_books ib
+             LEFT JOIN bundles b ON ib.bundle_id = b.id
+             LEFT JOIN bundle_groups bg ON b.group_id = bg.id
+             WHERE ib.status != 'sold'
+               AND (b.id IS NULL OR b.status != 'sold')
+               AND (bg.id IS NULL OR bg.status != 'sold')
+             GROUP BY ib.title
+             HAVING total_count > 0
+             ORDER BY ib.title ASC"
         );
         return $stmt->fetchAll();
     }
@@ -28,12 +111,18 @@ class InventoryModel extends Model
     /** รายเล่มของเรื่องหนึ่ง (ค่าเริ่มต้นดึงเฉพาะเล่มที่ยังไม่ขาย) */
     public function getBooksByTitle(string $title, bool $unsoldOnly = true): array
     {
-        $sql = "SELECT ib.*, b.volume_start AS bundle_vol_start, b.volume_end AS bundle_vol_end
+        $sql = "SELECT ib.*,
+                       b.volume_start AS bundle_vol_start,
+                       b.volume_end AS bundle_vol_end,
+                       b.status AS bundle_status
                 FROM inventory_books ib
                 LEFT JOIN bundles b ON ib.bundle_id = b.id
+                LEFT JOIN bundle_groups bg ON b.group_id = bg.id
                 WHERE ib.title = :title";
         if ($unsoldOnly) {
-            $sql .= " AND ib.status != 'sold'";
+            $sql .= " AND ib.status != 'sold'
+                      AND (b.id IS NULL OR b.status != 'sold')
+                      AND (bg.id IS NULL OR bg.status != 'sold')";
         }
         $sql .= " ORDER BY ib.volume ASC, ib.purchase_date ASC";
 
@@ -171,25 +260,30 @@ class InventoryModel extends Model
 
     /**
      * ดึงรายการบิลซื้อทั้งหมดที่เกี่ยวข้องกับเรื่องหนึ่งๆ พร้อมรูปภาพแนบ
-     * ใช้แสดงที่มาของสต็อกในหน้า stock/index
+     * ใช้แสดงที่มาของสต็อกในหน้า stock/index (ค่าเริ่มต้นกรองเฉพาะเล่มที่ยังไม่ขาย)
      */
-    public function getPurchasesByTitle(string $title): array
+    public function getPurchasesByTitle(string $title, bool $unsoldOnly = true): array
     {
         // ดึงบิลซื้อที่เกี่ยวข้อง (มีเล่มของเรื่องนี้อยู่) + จำนวนเล่มของเรื่องนี้ในบิลนั้น
         // หมายเหตุ: PDO::ATTR_EMULATE_PREPARES=false ทำให้ MySQL นับ placeholder ซ้ำเป็นคนละตัว
         // จึงต้องใช้ชื่อ placeholder แยกกัน (:title_a, :title_b) และ bind ทั้งสองค่า
+        $soldCond = $unsoldOnly ? "AND ib.status != 'sold' AND (b.id IS NULL OR b.status != 'sold') AND (bg.id IS NULL OR bg.status != 'sold')" : "";
         $stmt = $this->db->prepare(
             "SELECT p.id, p.purchase_code, p.purchase_date, p.total_shipping_cost, p.note,
                     (SELECT COUNT(*) FROM inventory_books ib
                        JOIN purchase_item_volumes piv ON piv.id = ib.purchase_item_volume_id
                        JOIN purchase_items pi ON pi.id = piv.purchase_item_id
-                      WHERE pi.purchase_id = p.id AND ib.title = :title_a) AS book_count_for_title
+                       LEFT JOIN bundles b ON ib.bundle_id = b.id
+                       LEFT JOIN bundle_groups bg ON b.group_id = bg.id
+                      WHERE pi.purchase_id = p.id AND ib.title = :title_a {$soldCond}) AS book_count_for_title
              FROM purchases p
              WHERE EXISTS (
                  SELECT 1 FROM inventory_books ib
                  JOIN purchase_item_volumes piv ON piv.id = ib.purchase_item_volume_id
                  JOIN purchase_items pi ON pi.id = piv.purchase_item_id
-                 WHERE pi.purchase_id = p.id AND ib.title = :title_b
+                 LEFT JOIN bundles b ON ib.bundle_id = b.id
+                 LEFT JOIN bundle_groups bg ON b.group_id = bg.id
+                 WHERE pi.purchase_id = p.id AND ib.title = :title_b {$soldCond}
              )
              ORDER BY p.purchase_date DESC, p.id DESC"
         );

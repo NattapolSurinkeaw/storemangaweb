@@ -187,13 +187,13 @@ async function openTitleDetail(title) {
 }
 
 function renderStockDetail(data) {
-    const books = data.books || [];
+    const rawBooks = data.books || [];
+    const books = rawBooks.filter(b => b.status !== 'sold' && b.bundle_status !== 'sold');
     const purchases = data.purchases || [];
     const title = data.title || '';
 
     const inBundleCount = books.filter(b => b.status === 'in_bundle').length;
     const availableCount = books.filter(b => b.status === 'available').length;
-
 
     let bookRows = '';
     books.forEach(b => {
@@ -203,8 +203,6 @@ function renderStockDetail(data) {
         } else if (b.status === 'in_bundle') {
             const bundleText = b.bundle_id ? `จัดชุดแล้ว (ชุด #${b.bundle_id})` : 'จัดชุดแล้ว';
             statusBadge = `<span class="badge badge-status-in_bundle"><i class="bi bi-collection me-1"></i>${escapeHtml(bundleText)}</span>`;
-        } else if (b.status === 'sold') {
-            statusBadge = '<span class="badge badge-status-sold"><i class="bi bi-check2-circle me-1"></i>ขายแล้ว</span>';
         } else {
             statusBadge = `<span class="badge badge-status-${b.status}">${escapeHtml(b.status)}</span>`;
         }
@@ -220,9 +218,8 @@ function renderStockDetail(data) {
     });
 
     if (books.length === 0) {
-        bookRows = `<tr><td colspan="4" class="text-center text-muted py-3">ไม่พบเล่มคงเหลือของเรื่องนี้</td></tr>`;
+        bookRows = `<tr><td colspan="4" class="text-center text-muted py-3">ไม่พบเล่มคงเหลือของเรื่องนี้ (ขายหมดแล้ว หรือยังไม่มีสต็อก)</td></tr>`;
     }
-
 
     let purchaseCards = '';
     purchases.forEach(p => {
@@ -250,7 +247,7 @@ function renderStockDetail(data) {
                             </div>
                             <div class="small text-muted mt-1">
                                 วันที่ซื้อ: ${escapeHtml(p.purchase_date)}
-                                | เล่มของเรื่องนี้: <strong>${parseInt(p.book_count_for_title)}</strong> เล่ม
+                                | เล่มคงเหลือ: <strong>${parseInt(p.book_count_for_title)}</strong> เล่ม
                                 | ค่าส่ง: ${parseFloat(p.total_shipping_cost).toFixed(2)} ฿
                             </div>
                             ${p.note ? `<div class="small text-muted mt-1">หมายเหตุ: ${escapeHtml(p.note)}</div>` : ''}
@@ -263,7 +260,7 @@ function renderStockDetail(data) {
     });
 
     if (purchases.length === 0) {
-        purchaseCards = `<div class="col-12"><div class="text-muted fst-italic">ไม่พบข้อมูลบิลซื้อที่เกี่ยวข้อง</div></div>`;
+        purchaseCards = `<div class="col-12"><div class="text-muted fst-italic">ไม่พบบิลซื้อที่มีเล่มคงเหลือของเรื่องนี้</div></div>`;
     }
 
     stockModalBody.innerHTML = `
@@ -287,7 +284,7 @@ function renderStockDetail(data) {
 
         <div class="card p-3 shadow-sm border-0 bg-white">
             <div class="panel-title mb-3 fw-bold text-dark">
-                <i class="bi bi-image text-primary me-1"></i> ที่มาของสต็อก — บิลซื้อที่เกี่ยวข้อง (${purchases.length} บิล)
+                <i class="bi bi-image text-primary me-1"></i> ที่มาของสต็อกคงเหลือ — บิลซื้อที่เกี่ยวข้อง (${purchases.length} บิล)
             </div>
             <div class="row g-3">
                 ${purchaseCards}

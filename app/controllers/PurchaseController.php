@@ -113,19 +113,27 @@ class PurchaseController extends Controller
     }
 
     /**
-     * ดึงรายละเอียดบิลซื้อ (JSON) — ใช้กับ modal ในหน้า create
+     * ดึงรายละเอียดบิลซื้อ (JSON) — ใช้กับ modal ในหน้า create, bundle, stock, report
      */
-    public function detail(int $id): void
+    public function detail($id = 0): void
     {
         header('Content-Type: application/json; charset=utf-8');
         try {
-            $purchase = $this->purchaseModel->getPurchaseWithItems($id);
+            $purchase = null;
+            if (is_numeric($id) && (int) $id > 0) {
+                $purchase = $this->purchaseModel->getPurchaseWithItems((int) $id);
+            }
+            if (!$purchase && !empty($id)) {
+                $purchase = $this->purchaseModel->getPurchaseByCode((string) $id);
+            }
+
             if (!$purchase) {
                 echo json_encode(['success' => false, 'message' => 'ไม่พบบิลซื้อนี้']);
                 return;
             }
 
-            $images = $this->purchaseModel->getPurchaseImages($id);
+            $purchaseId = (int) $purchase['id'];
+            $images = $this->purchaseModel->getPurchaseImages($purchaseId);
 
             // คำนวณ total_book_count ของแต่ละ item
             foreach ($purchase['items'] as &$it) {

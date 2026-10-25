@@ -358,8 +358,61 @@
     </div>
 </div>
 
+<!-- Modal: รายละเอียดคำสั่งซื้อ / บิลซื้อ -->
+<div class="modal fade" id="purchaseDetailModal" tabindex="-1" aria-labelledby="purchaseModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 14px; overflow: hidden;">
+            <div class="modal-header border-bottom py-3 px-4" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: #ffffff;">
+                <div class="d-flex align-items-center gap-2">
+                    <div style="width: 38px; height: 38px; border-radius: 10px; background: rgba(59, 130, 246, 0.2); display: flex; align-items: center; justify-content: center; color: #60a5fa;">
+                        <i class="bi bi-receipt-cutoff fs-5"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0 text-white" id="purchaseModalLabel">รายละเอียดคำสั่งซื้อ</h5>
+                        <div class="small text-white-50" id="purchaseModalSub">ข้อมูลรายการบิลและการคิดต้นทุน</div>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-3 p-md-4" id="purchaseDetailBody" style="background: #f8fafc; min-height: 250px;">
+                <div class="text-center text-muted py-5">
+                    <div class="spinner-border text-primary spinner-border-sm me-2" role="status"></div>
+                    <span>กำลังโหลดข้อมูลคำสั่งซื้อ...</span>
+                </div>
+            </div>
+            <div class="modal-footer bg-white border-top py-2 px-4 d-flex justify-content-between align-items-center">
+                <div id="purchaseModalFooterActions"></div>
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">ปิด</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- สไตล์เฉพาะหน้ารายงาน -->
 <style>
+/* Purchase detail button & modal */
+.view-purchase-btn {
+    background-color: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    color: #1e293b;
+    font-size: 0.82rem;
+    font-weight: 500;
+    padding: 3px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease-in-out;
+}
+.view-purchase-btn:hover {
+    background-color: #e0e7ff;
+    border-color: #6366f1;
+    color: #4338ca;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(99, 102, 241, 0.15);
+}
+.slip-thumbnail:hover img {
+    transform: scale(1.04);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.18);
+}
 /* Preset buttons */
 .btn-preset {
     border: 1px solid var(--color-border);
@@ -1317,7 +1370,6 @@ const billToOpen = urlParams.get('view_bill');
 if (billToOpen) {
     openPurchaseDetail(billToOpen);
 }
-
 
 // Initialise when DOM ready
 document.addEventListener('DOMContentLoaded', () => {

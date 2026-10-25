@@ -13,4 +13,14 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
     });
+
+    // ป้องกัน Browser Warning: Blocked aria-hidden on an element because its descendant retained focus
+    // เมื่อ Modal กำลังจะปิด ให้ปลด focus (blur) ออกจากปุ่มหรือ element ภายใน Modal ทันที
+    document.addEventListener('hide.bs.modal', function (event) {
+        if (document.activeElement && event.target && typeof event.target.contains === 'function') {
+            if (event.target.contains(document.activeElement)) {
+                document.activeElement.blur();
+            }
+        }
+    });
 });
