@@ -9,6 +9,7 @@ ini_set('display_errors', '1');
 
 define('ROOT_PATH', dirname(__DIR__));
 define('APP_PATH', ROOT_PATH . '/app');
+define('ROUTES_PATH', ROOT_PATH . '/routes');
 
 require_once APP_PATH . '/core/EnvLoader.php';
 EnvLoader::load(ROOT_PATH . '/.env');
@@ -17,7 +18,7 @@ define('APP_NAME', EnvLoader::get('APP_NAME', 'Manga Stock System'));
 define('APP_DEBUG', filter_var(EnvLoader::get('APP_DEBUG', 'false'), FILTER_VALIDATE_BOOLEAN));
 
 // BASE_URL คำนวณจาก script path เพื่อให้ลิงก์ในเมนูถูกต้องไม่ว่าจะวางโปรเจกต์ไว้โฟลเดอร์ไหน
-$scriptDir = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME']));
+$scriptDir = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? ''));
 define('BASE_URL', rtrim($scriptDir, '/'));
 
 define('SHOPEE_FEE_PERCENT', (float) EnvLoader::get('SHOPEE_FEE_PERCENT', 13));
@@ -35,6 +36,8 @@ spl_autoload_register(function ($class) {
     }
 });
 
+require_once APP_PATH . '/core/helpers.php';
+require_once APP_PATH . '/core/Router.php';
 require_once APP_PATH . '/core/Database.php';
 
 if (session_status() === PHP_SESSION_NONE) {

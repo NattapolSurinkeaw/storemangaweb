@@ -333,6 +333,15 @@ class BundleModel extends Model
         return $row ?: null;
     }
 
+    public function getBundlesByGroupId(int $groupId): array
+    {
+        $stmt = $this->db->prepare(
+            "SELECT * FROM bundles WHERE group_id = :gid ORDER BY title ASC, volume_start ASC"
+        );
+        $stmt->execute([':gid' => $groupId]);
+        return $stmt->fetchAll();
+    }
+
     /**
      * ดึงรายละเอียดกลุ่ม: ข้อมูลกลุ่ม + list ของ bundle ย่อย + หนังสือทุกเล่มในแต่ละ bundle
      * @return array{group:?array, bundles: array<int, array{bundle:array, books:array[]}>}

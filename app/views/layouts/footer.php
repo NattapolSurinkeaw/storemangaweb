@@ -8,7 +8,7 @@
 <!-- Mobile bottom tab bar -->
 <nav class="bottom-nav d-lg-none">
     <?php foreach ($__navItems as $item): ?>
-        <a href="<?= BASE_URL ?>/index.php?url=<?= $item['url'] ?>"
+        <a href="<?= url($item['url']) ?>"
            class="<?= __manga_is_active($item, $__seg, $__full) ? 'active' : '' ?>">
             <i class="bi <?= $item['icon'] ?>"></i>
             <span><?= $item['short'] ?></span>
@@ -17,6 +17,6 @@
 </nav>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="<?= BASE_URL ?>/js/app.js"></script>
+<script src="<?= asset('js/app.js') ?>"></script>
 </body>
 </html>

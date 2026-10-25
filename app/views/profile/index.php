@@ -29,7 +29,7 @@
                 </div>
             </div>
 
-            <form method="POST" action="<?= BASE_URL ?>/index.php?url=profile/updateProfile">
+            <form method="POST" action="<?= url('profile/updateProfile') ?>">
                 <div class="mb-3">
                     <label class="form-label">ชื่อผู้ใช้ (Username)</label>
                     <input type="text" class="form-control" value="<?= htmlspecialchars($user['username']) ?>" readonly>
@@ -66,7 +66,7 @@
                 <i class="bi bi-shield-lock text-primary"></i> เปลี่ยนรหัสผ่าน
             </div>
 
-            <form method="POST" action="<?= BASE_URL ?>/index.php?url=profile/updatePassword">
+            <form method="POST" action="<?= url('profile/updatePassword') ?>">
                 <div class="mb-3">
                     <label class="form-label">รหัสผ่านปัจจุบัน <span class="text-danger">*</span></label>
                     <div class="input-group">

@@ -21,15 +21,23 @@ class PurchaseController extends Controller
 
     public function index(): void
     {
-        $this->view('purchase/create', [
-            'purchases' => $this->purchaseModel->getAllPurchases(),
-        ]);
+        if ($this->isAjax()) {
+            $this->listData();
+            return;
+        }
+
+        $this->view('purchase/create');
     }
 
     public function create(): void
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $this->store();
+            return;
+        }
+
+        if ($this->isAjax()) {
+            $this->listData();
             return;
         }
 
@@ -55,9 +63,16 @@ class PurchaseController extends Controller
         }
 
         $this->view('purchase/create', [
-            'purchases'     => $this->purchaseModel->getAllPurchases(),
             'editing'       => $editing,
             'editingImages' => $editingImages,
+        ]);
+    }
+
+    public function listData(): void
+    {
+        $this->json([
+            'success'   => true,
+            'purchases' => $this->purchaseModel->getAllPurchases(),
         ]);
     }
 

@@ -1,18 +1,13 @@
-<?php
-$totalTitles = count($stockSummary);
-$totalBooksAll = array_sum(array_column($stockSummary, 'total_count'));
-$totalInBundleAll = array_sum(array_column($stockSummary, 'in_bundle_count'));
-$totalAvailableAll = array_sum(array_column($stockSummary, 'available_count'));
-$totalStockCostAll = array_sum(array_column($stockSummary, 'total_cost'));
-?>
-
 <div class="page-title d-flex justify-content-between align-items-center flex-wrap gap-2">
     <div class="d-flex align-items-center gap-2">
         <i class="bi bi-boxes"></i>
         <h3 class="mb-0">สต็อกมังงะคงเหลือ</h3>
     </div>
     <div class="d-flex align-items-center gap-2">
-        <a href="<?= BASE_URL ?>/index.php?url=stock/bundle" class="btn btn-outline-primary btn-sm">
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="btnRefreshStock" title="รีเฟรชสต็อก">
+            <i class="bi bi-arrow-clockwise"></i> รีเฟรช
+        </button>
+        <a href="<?= url('stock/bundle') ?>" class="btn btn-outline-primary btn-sm">
             <i class="bi bi-collection me-1"></i> จัดชุดขาย (Bundling)
         </a>
     </div>
@@ -22,28 +17,28 @@ $totalStockCostAll = array_sum(array_column($stockSummary, 'total_cost'));
     <div class="col-6 col-md-3">
         <div class="stat-card stat-purchase">
             <div class="stat-label">หนังสือคงเหลือทั้งหมด</div>
-            <div class="stat-value"><?= number_format($totalBooksAll) ?> <span style="font-size: 0.95rem; font-weight: 500;">เล่ม</span></div>
-            <div class="small opacity-75 mt-1"><?= number_format($totalTitles) ?> เรื่องที่ยังมีสต็อก</div>
+            <div class="stat-value" id="valTotalBooks"><span class="skeleton-pulse px-3">0,000 เล่ม</span></div>
+            <div class="small opacity-75 mt-1" id="valTotalTitles"><span class="skeleton-pulse">00 เรื่องที่ยังมีสต็อก</span></div>
         </div>
     </div>
     <div class="col-6 col-md-3">
         <div class="stat-card" style="background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);">
             <div class="stat-label">จัดชุดแล้ว (อยู่ในชุดขาย)</div>
-            <div class="stat-value"><?= number_format($totalInBundleAll) ?> <span style="font-size: 0.95rem; font-weight: 500;">เล่ม</span></div>
+            <div class="stat-value" id="valTotalInBundle"><span class="skeleton-pulse px-3">0,000 เล่ม</span></div>
             <div class="small opacity-75 mt-1">พร้อมขายแบบชุด</div>
         </div>
     </div>
     <div class="col-6 col-md-3">
         <div class="stat-card stat-profit">
             <div class="stat-label">ยังไม่จัดชุด (เล่มเดี่ยว)</div>
-            <div class="stat-value"><?= number_format($totalAvailableAll) ?> <span style="font-size: 0.95rem; font-weight: 500;">เล่ม</span></div>
+            <div class="stat-value" id="valTotalAvailable"><span class="skeleton-pulse px-3">0,000 เล่ม</span></div>
             <div class="small opacity-75 mt-1">พร้อมจัดชุดหรือขายเดี่ยว</div>
         </div>
     </div>
     <div class="col-6 col-md-3">
         <div class="stat-card stat-sales">
             <div class="stat-label">มูลค่าต้นทุนคงเหลือรวม</div>
-            <div class="stat-value"><?= number_format($totalStockCostAll, 2) ?> <span style="font-size: 0.95rem; font-weight: 500;">฿</span></div>
+            <div class="stat-value" id="valTotalCost"><span class="skeleton-pulse px-3">000,000.00 ฿</span></div>
             <div class="small opacity-75 mt-1">คำนวณจากเล่มที่ยังไม่ขาย</div>
         </div>
     </div>
@@ -65,7 +60,7 @@ $totalStockCostAll = array_sum(array_column($stockSummary, 'total_cost'));
         </div>
     </div>
     <div class="table-responsive">
-        <table class="table table-sm table-hover table-flex-mobile" id="stockSummaryTable">
+        <table class="table table-sm table-hover table-flex-mobile align-middle" id="stockSummaryTable">
             <thead>
                 <tr>
                     <th>เรื่อง</th>
@@ -76,63 +71,17 @@ $totalStockCostAll = array_sum(array_column($stockSummary, 'total_cost'));
                     <th class="text-end"></th>
                 </tr>
             </thead>
-            <tbody>
-            <?php foreach ($stockSummary as $s): ?>
-                <tr class="stock-item-row" data-title="<?= htmlspecialchars(mb_strtolower($s['title'], 'UTF-8')) ?>">
-                    <td class="stock-title" data-label="เรื่อง">
-                        <strong><?= htmlspecialchars($s['title']) ?></strong>
-                    </td>
-                    <td data-label="เล่มที่มี">
-                        <?php if ((int)$s['min_volume'] === (int)$s['max_volume']): ?>
-                            <span class="badge bg-light text-dark border">เล่ม <?= (int)$s['min_volume'] ?></span>
-                        <?php else: ?>
-                            <span class="badge bg-light text-dark border">เล่ม <?= (int)$s['min_volume'] ?> - <?= (int)$s['max_volume'] ?></span>
-                        <?php endif; ?>
-                    </td>
-                    <td data-label="จำนวนทั้งหมด">
-                        <span class="fw-bold"><?= (int)$s['total_count'] ?></span> เล่ม
-                    </td>
-                    <td data-label="สถานะหนังสือ">
-                        <div class="d-inline-flex flex-wrap gap-1 align-items-center">
-                            <?php if ((int)$s['in_bundle_count'] > 0): ?>
-                                <span class="badge badge-status-in_bundle" title="จัดชุดแล้ว <?= (int)$s['in_bundle_count'] ?> เล่ม">
-                                    <i class="bi bi-collection me-1"></i>จัดชุดแล้ว <strong><?= (int)$s['in_bundle_count'] ?></strong> เล่ม
-                                </span>
-                            <?php else: ?>
-                                <span class="badge bg-light text-muted border" title="ยังไม่มีเล่มที่จัดชุด">
-                                    <i class="bi bi-collection me-1"></i>จัดชุดแล้ว 0 เล่ม
-                                </span>
-                            <?php endif; ?>
-
-                            <?php if ((int)$s['available_count'] > 0): ?>
-                                <span class="badge badge-status-available" title="ยังไม่จัดชุด <?= (int)$s['available_count'] ?> เล่ม">
-                                    <i class="bi bi-journal me-1"></i>ยังไม่จัดชุด <strong><?= (int)$s['available_count'] ?></strong> เล่ม
-                                </span>
-                            <?php else: ?>
-                                <span class="badge bg-light text-muted border" title="ไม่มีเล่มที่ยังไม่จัดชุด">
-                                    <i class="bi bi-journal me-1"></i>ยังไม่จัดชุด 0 เล่ม
-                                </span>
-                            <?php endif; ?>
-                        </div>
-                    </td>
-                    <td data-label="ต้นทุนรวม" class="font-mono">
-                        <?= number_format((float)$s['total_cost'], 2) ?> ฿
-                    </td>
-                    <td data-label="" class="text-end">
-                        <button type="button" class="btn btn-sm btn-outline-primary view-title-detail-btn" data-title="<?= htmlspecialchars($s['title']) ?>">
-                            <i class="bi bi-eye"></i> ดูรายเล่ม
-                        </button>
+            <tbody id="stockSummaryTableBody">
+                <tr id="stockLoadingRow">
+                    <td colspan="6" class="text-center text-muted py-5">
+                        <span class="spinner-border spinner-border-sm text-primary me-2"></span> กำลังโหลดข้อมูลสต็อกมังงะ...
                     </td>
                 </tr>
-            <?php endforeach; ?>
-            <tr id="noSearchMatchRow" style="display: none;">
-                <td colspan="6" class="text-center text-muted py-4">
-                    <i class="bi bi-search me-1"></i> ไม่พบชื่อเรื่องที่ตรงกับการค้นหา
-                </td>
-            </tr>
-            <?php if (empty($stockSummary)): ?>
-                <tr><td colspan="6" class="text-center text-muted py-4">ยังไม่มีสต็อกคงเหลือ</td></tr>
-            <?php endif; ?>
+                <tr id="noSearchMatchRow" style="display: none;">
+                    <td colspan="6" class="text-center text-muted py-4">
+                        <i class="bi bi-search me-1"></i> ไม่พบชื่อเรื่องที่ตรงกับการค้นหา
+                    </td>
+                </tr>
             </tbody>
         </table>
     </div>
@@ -163,7 +112,6 @@ $totalStockCostAll = array_sum(array_column($stockSummary, 'total_cost'));
 </div>
 
 <script>
-const BASE_URL = "<?= BASE_URL ?>";
 let stockModal = null;
 const stockModalEl = document.getElementById('stockDetailModal');
 const stockModalTitle = document.getElementById('stockModalTitle');
@@ -178,6 +126,39 @@ function ensureStockModal() {
 
 function escapeHtml(s) {
     return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function escapeAttr(s) {
+    return escapeHtml(s);
+}
+
+function formatVolumeDisplay(volumeList, minVol, maxVol) {
+    minVol = parseInt(minVol) || 0;
+    maxVol = parseInt(maxVol) || 0;
+    if (!volumeList || !String(volumeList).trim()) {
+        return minVol === maxVol ? `เล่ม ${minVol}` : `เล่ม ${minVol} - ${maxVol}`;
+    }
+    const vols = Array.from(new Set(
+        String(volumeList).split(',').map(v => parseInt(v)).filter(v => !isNaN(v) && v > 0)
+    )).sort((a, b) => a - b);
+
+    if (vols.length === 0) {
+        return minVol === maxVol ? `เล่ม ${minVol}` : `เล่ม ${minVol} - ${maxVol}`;
+    }
+
+    const ranges = [];
+    let start = vols[0];
+    let prev = vols[0];
+    for (let i = 1; i < vols.length; i++) {
+        if (vols[i] === prev + 1) {
+            prev = vols[i];
+        } else {
+            ranges.push(start === prev ? `${start}` : `${start}-${prev}`);
+            start = vols[i];
+            prev = vols[i];
+        }
+    }
+    ranges.push(start === prev ? `${start}` : `${start}-${prev}`);
+    return `เล่ม ${ranges.join(', ')}`;
 }
 
 async function openTitleDetail(title) {
@@ -195,7 +176,7 @@ async function openTitleDetail(title) {
     modal.show();
 
     try {
-        const res = await fetch(`${BASE_URL}/index.php?url=stock/titleDetail&title=${encodeURIComponent(title)}`);
+        const res = await fetch(`${BASE_URL}/stock/titleDetail?title=${encodeURIComponent(title)}`);
         const json = await res.json();
         if (!json.success) throw new Error(json.message);
 
@@ -213,7 +194,7 @@ function renderStockDetail(data) {
     const inBundleCount = books.filter(b => b.status === 'in_bundle').length;
     const availableCount = books.filter(b => b.status === 'available').length;
 
-    // สร้างตารางรายเล่ม
+
     let bookRows = '';
     books.forEach(b => {
         let statusBadge = '';
@@ -242,7 +223,7 @@ function renderStockDetail(data) {
         bookRows = `<tr><td colspan="4" class="text-center text-muted py-3">ไม่พบเล่มคงเหลือของเรื่องนี้</td></tr>`;
     }
 
-    // สร้างกล่องบิลซื้อ
+
     let purchaseCards = '';
     purchases.forEach(p => {
         let imgHtml = '';
@@ -315,55 +296,159 @@ function renderStockDetail(data) {
     `;
 }
 
-document.addEventListener('DOMContentLoaded', function () {
-    const searchInput = document.getElementById('stockSearchInput');
-    const clearBtn = document.getElementById('clearSearchBtn');
-    const rows = document.querySelectorAll('#stockSummaryTable tbody tr.stock-item-row');
-    const noMatchRow = document.getElementById('noSearchMatchRow');
+$(document).ready(function() {
+    loadStockData();
 
-    // Click handler for ดูรายเล่ม buttons
-    document.querySelectorAll('.view-title-detail-btn').forEach(btn => {
-        btn.addEventListener('click', function () {
-            openTitleDetail(btn.dataset.title);
+    $('#btnRefreshStock').on('click', function() {
+        const $btn = $(this);
+        $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span>');
+        loadStockData(function() {
+            $btn.prop('disabled', false).html('<i class="bi bi-arrow-clockwise"></i> รีเฟรช');
         });
     });
 
-    // ตรวจสอบว่ามี ?title= ใน URL หรือไม่ ถ้ามีให้เปิด modal อัตโนมัติ
-    const urlParams = new URLSearchParams(window.location.search);
-    const initialTitle = urlParams.get('title');
-    if (initialTitle) {
-        openTitleDetail(initialTitle);
-    }
+    function loadStockData(callback) {
+        const urlParams = new URLSearchParams(window.location.search);
+        const selectedTitle = urlParams.get('title') || '';
 
-    if (!searchInput) return;
+        $.ajax({
+            url: BASE_URL + '/stock/data' + (selectedTitle ? '?title=' + encodeURIComponent(selectedTitle) : ''),
+            type: 'GET',
+            dataType: 'json',
+            success: function(res) {
+                if (!res.success) return;
+                const summary = res.stockSummary || [];
 
-    function filterStock() {
-        const query = searchInput.value.trim().toLowerCase();
-        let visibleCount = 0;
+                let totalBooksAll = 0;
+                let totalInBundleAll = 0;
+                let totalAvailableAll = 0;
+                let totalStockCostAll = 0;
 
-        if (clearBtn) {
-            clearBtn.style.display = query !== '' ? 'inline-block' : 'none';
-        }
+                summary.forEach(function(s) {
+                    totalBooksAll += parseInt(s.total_count) || 0;
+                    totalInBundleAll += parseInt(s.in_bundle_count) || 0;
+                    totalAvailableAll += parseInt(s.available_count) || 0;
+                    totalStockCostAll += parseFloat(s.total_cost) || 0;
+                });
 
-        rows.forEach(row => {
-            const title = row.getAttribute('data-title') || '';
-            if (query === '' || title.includes(query)) {
-                row.style.display = '';
-                visibleCount++;
-            } else {
-                row.style.display = 'none';
+                // Update Stats
+                $('#valTotalBooks').html(`${totalBooksAll.toLocaleString()} <span style="font-size: 0.95rem; font-weight: 500;">เล่ม</span>`);
+                $('#valTotalTitles').text(`${summary.length.toLocaleString()} เรื่องที่ยังมีสต็อก`);
+                $('#valTotalInBundle').html(`${totalInBundleAll.toLocaleString()} <span style="font-size: 0.95rem; font-weight: 500;">เล่ม</span>`);
+                $('#valTotalAvailable').html(`${totalAvailableAll.toLocaleString()} <span style="font-size: 0.95rem; font-weight: 500;">เล่ม</span>`);
+                $('#valTotalCost').html(`${totalStockCostAll.toLocaleString('th-TH', {minimumFractionDigits: 2, maximumFractionDigits: 2})} <span style="font-size: 0.95rem; font-weight: 500;">฿</span>`);
+
+                // Update Table
+                const $tbody = $('#stockSummaryTableBody');
+                $('#stockLoadingRow').remove();
+                $tbody.find('tr.stock-item-row, tr.empty-row').remove();
+
+                if (summary.length === 0) {
+                    $tbody.prepend('<tr class="empty-row"><td colspan="6" class="text-center text-muted py-4">ยังไม่มีสต็อกคงเหลือ</td></tr>');
+                    return;
+                }
+
+                summary.forEach(function(s) {
+                    const titleLower = String(s.title || '').toLowerCase();
+                    const volumeDisplay = formatVolumeDisplay(s.volume_list, s.min_volume, s.max_volume);
+                    const totalCount = parseInt(s.total_count) || 0;
+                    const inBundleCount = parseInt(s.in_bundle_count) || 0;
+                    const availableCount = parseInt(s.available_count) || 0;
+                    const totalCost = parseFloat(s.total_cost || 0).toLocaleString('th-TH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+                    let inBundleBadge = inBundleCount > 0
+                        ? `<span class="badge badge-status-in_bundle" title="จัดชุดแล้ว ${inBundleCount} เล่ม"><i class="bi bi-collection me-1"></i>จัดชุดแล้ว <strong>${inBundleCount}</strong> เล่ม</span>`
+                        : `<span class="badge bg-light text-muted border" title="ยังไม่มีเล่มที่จัดชุด"><i class="bi bi-collection me-1"></i>จัดชุดแล้ว 0 เล่ม</span>`;
+
+                    let availableBadge = availableCount > 0
+                        ? `<span class="badge badge-status-available" title="ยังไม่จัดชุด ${availableCount} เล่ม"><i class="bi bi-journal me-1"></i>ยังไม่จัดชุด <strong>${availableCount}</strong> เล่ม</span>`
+                        : `<span class="badge bg-light text-muted border" title="ไม่มีเล่มที่ยังไม่จัดชุด"><i class="bi bi-journal me-1"></i>ยังไม่จัดชุด 0 เล่ม</span>`;
+
+                    const rowHtml = `
+                        <tr class="stock-item-row" data-title="${escapeHtml(titleLower)}">
+                            <td class="stock-title" data-label="เรื่อง">
+                                <strong>${escapeHtml(s.title)}</strong>
+                            </td>
+                            <td data-label="เล่มที่มี">
+                                <span class="badge bg-light text-dark border" title="เล่มที่ยังไม่ขาย: ${escapeHtml(s.volume_list || '')}">
+                                    ${escapeHtml(volumeDisplay)}
+                                </span>
+                            </td>
+                            <td data-label="จำนวนทั้งหมด">
+                                <span class="fw-bold">${totalCount}</span> เล่ม
+                            </td>
+                            <td data-label="สถานะหนังสือ">
+                                <div class="d-inline-flex flex-wrap gap-1 align-items-center">
+                                    ${inBundleBadge}
+                                    ${availableBadge}
+                                </div>
+                            </td>
+                            <td data-label="ต้นทุนรวม" class="font-mono">
+                                ${totalCost} ฿
+                            </td>
+                            <td data-label="" class="text-end">
+                                <button type="button" class="btn btn-sm btn-outline-primary view-title-detail-btn" data-title="${escapeHtml(s.title)}">
+                                    <i class="bi bi-eye"></i> ดูรายเล่ม
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                    $tbody.append(rowHtml);
+                });
+
+                // Hook view-title-detail-btn
+                $('.view-title-detail-btn').off('click').on('click', function() {
+                    openTitleDetail($(this).data('title'));
+                });
+
+                if (selectedTitle) {
+                    openTitleDetail(selectedTitle);
+                }
+
+                initSearchFilter();
+            },
+            error: function(xhr, status, err) {
+                $('#stockSummaryTableBody').html('<tr><td colspan="6" class="text-center text-danger py-4">โหลดข้อมูลสต็อกไม่สำเร็จ</td></tr>');
+            },
+            complete: function() {
+                if (typeof callback === 'function') callback();
             }
         });
-
-        if (noMatchRow) {
-            noMatchRow.style.display = (visibleCount === 0 && rows.length > 0) ? '' : 'none';
-        }
     }
 
-    searchInput.addEventListener('input', filterStock);
+    function initSearchFilter() {
+        const searchInput = document.getElementById('stockSearchInput');
+        const clearBtn = document.getElementById('clearSearchBtn');
+        const noMatchRow = document.getElementById('noSearchMatchRow');
 
-    if (clearBtn) {
-        clearBtn.addEventListener('click', function () {
+        if (!searchInput) return;
+
+        function filterStock() {
+            const query = searchInput.value.trim().toLowerCase();
+            const rows = document.querySelectorAll('#stockSummaryTable tbody tr.stock-item-row');
+            let visibleCount = 0;
+
+            if (clearBtn) {
+                clearBtn.style.display = query !== '' ? 'inline-block' : 'none';
+            }
+
+            rows.forEach(row => {
+                const title = row.getAttribute('data-title') || '';
+                if (query === '' || title.includes(query)) {
+                    row.style.display = '';
+                    visibleCount++;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+
+            if (noMatchRow) {
+                noMatchRow.style.display = (visibleCount === 0 && rows.length > 0) ? '' : 'none';
+            }
+        }
+
+        $(searchInput).off('input').on('input', filterStock);
+        $(clearBtn).off('click').on('click', function () {
             searchInput.value = '';
             filterStock();
             searchInput.focus();

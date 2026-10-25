@@ -1,7 +1,7 @@
 <?php
-$__url = isset($_GET['url']) ? trim($_GET['url'], '/') : 'dashboard';
-$__seg = $__url === '' ? 'dashboard' : explode('/', $__url)[0];
-$__full = $__url === '' ? 'dashboard' : $__url;
+$__path = trim(Router::getRequestPath(), '/');
+$__seg = $__path === '' ? 'dashboard' : explode('/', $__path)[0];
+$__full = $__path === '' ? 'dashboard' : $__path;
 
 $__user = $_SESSION['user_id'] ?? null;
 $__userModel = new UserModel();
@@ -44,20 +44,47 @@ function __manga_is_active($item, $seg, $full) {
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Noto+Sans+Thai:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
-<link rel="stylesheet" href="<?= BASE_URL ?>/css/app.css">
+<link rel="stylesheet" href="<?= asset('css/app.css') ?>">
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script>
+var BASE_URL = <?= json_encode(BASE_URL) ?>;
+function escapeHtml(s) {
+    return String(s ?? '').replace(/[&<>"']/g, function(c) {
+        return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+}
+function escapeAttr(s) {
+    return escapeHtml(s);
+}
+</script>
+<style>
+.skeleton-pulse {
+  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+  background-size: 200% 100%;
+  animation: sk-glow 1.4s ease-in-out infinite;
+  border-radius: 4px;
+  display: inline-block;
+  color: transparent !important;
+  user-select: none;
+}
+@keyframes sk-glow {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+</style>
 </head>
 <body class="app-shell">
 
 <!-- Desktop sidebar -->
 <aside class="sidebar d-none d-lg-flex flex-column">
-    <a class="sidebar-brand" href="<?= BASE_URL ?>/index.php?url=dashboard">
+    <a class="sidebar-brand" href="<?= url('dashboard') ?>">
         <span class="seal">漫</span>
         <span class="brand-text"><?= htmlspecialchars(APP_NAME) ?><small>ระบบจัดการสต็อกมังงะ</small></span>
     </a>
     <nav class="sidebar-nav">
         <?php foreach ($__navItems as $item): ?>
             <a class="nav-link <?= __manga_is_active($item, $__seg, $__full) ? 'active' : '' ?>"
-               href="<?= BASE_URL ?>/index.php?url=<?= $item['url'] ?>">
+               href="<?= url($item['url']) ?>">
                 <i class="bi <?= $item['icon'] ?>"></i> <?= $item['label'] ?>
             </a>
         <?php endforeach; ?>
@@ -65,7 +92,7 @@ function __manga_is_active($item, $seg, $full) {
 
     <?php if ($__currentUser): ?>
     <div class="sidebar-user">
-        <a href="<?= BASE_URL ?>/index.php?url=profile" class="d-flex align-items-center gap-2 text-decoration-none text-reset flex-grow-1 min-w-0" title="ตั้งค่าข้อมูลส่วนตัว">
+        <a href="<?= url('profile') ?>" class="d-flex align-items-center gap-2 text-decoration-none text-reset flex-grow-1 min-w-0" title="ตั้งค่าข้อมูลส่วนตัว">
             <div class="user-avatar"><?= mb_strtoupper(mb_substr($__currentUser['display_name'] ?? 'U', 0, 1, 'UTF-8')) ?></div>
             <div class="user-info">
                 <div class="user-name"><?= htmlspecialchars($__currentUser['display_name']) ?></div>
@@ -76,10 +103,10 @@ function __manga_is_active($item, $seg, $full) {
                 </div>
             </div>
         </a>
-        <a class="btn-icon" href="<?= BASE_URL ?>/index.php?url=profile" title="แก้ไขข้อมูลส่วนตัว" aria-label="แก้ไขข้อมูลส่วนตัว">
+        <a class="btn-icon" href="<?= url('profile') ?>" title="แก้ไขข้อมูลส่วนตัว" aria-label="แก้ไขข้อมูลส่วนตัว">
             <i class="bi bi-gear"></i>
         </a>
-        <a class="btn-icon" href="<?= BASE_URL ?>/index.php?url=login/logout" title="ออกจากระบบ" aria-label="ออกจากระบบ">
+        <a class="btn-icon" href="<?= url('logout') ?>" title="ออกจากระบบ" aria-label="ออกจากระบบ">
             <i class="bi bi-box-arrow-right"></i>
         </a>
     </div>
@@ -100,19 +127,19 @@ function __manga_is_active($item, $seg, $full) {
         <nav class="sidebar-nav">
             <?php foreach ($__navItems as $item): ?>
                 <a class="nav-link <?= __manga_is_active($item, $__seg, $__full) ? 'active' : '' ?>"
-                   href="<?= BASE_URL ?>/index.php?url=<?= $item['url'] ?>">
+                   href="<?= url($item['url']) ?>">
                     <i class="bi <?= $item['icon'] ?>"></i> <?= $item['label'] ?>
                 </a>
             <?php endforeach; ?>
             <a class="nav-link <?= $__seg === 'profile' ? 'active' : '' ?>"
-               href="<?= BASE_URL ?>/index.php?url=profile">
+               href="<?= url('profile') ?>">
                 <i class="bi bi-person-gear"></i> ข้อมูลส่วนตัว
             </a>
         </nav>
 
         <?php if ($__currentUser): ?>
         <div class="mobile-user-bar">
-            <a href="<?= BASE_URL ?>/index.php?url=profile" class="user-info text-decoration-none">
+            <a href="<?= url('profile') ?>" class="user-info text-decoration-none">
                 <div class="user-name"><?= htmlspecialchars($__currentUser['display_name']) ?></div>
                 <div class="user-role">
                     <span class="role-badge role-<?= htmlspecialchars($__currentUser['role']) ?>">
@@ -120,10 +147,10 @@ function __manga_is_active($item, $seg, $full) {
                     </span>
                 </div>
             </a>
-            <a class="btn btn-sm btn-outline-light me-1" href="<?= BASE_URL ?>/index.php?url=profile" title="ตั้งค่าข้อมูล">
+            <a class="btn btn-sm btn-outline-light me-1" href="<?= url('profile') ?>" title="ตั้งค่าข้อมูล">
                 <i class="bi bi-gear"></i>
             </a>
-            <a class="btn btn-sm btn-outline-light" href="<?= BASE_URL ?>/index.php?url=login/logout" title="ออกจากระบบ">
+            <a class="btn btn-sm btn-outline-light" href="<?= url('logout') ?>" title="ออกจากระบบ">
                 <i class="bi bi-box-arrow-right"></i>
             </a>
         </div>
@@ -137,15 +164,15 @@ function __manga_is_active($item, $seg, $full) {
         <button class="menu-btn" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileNav" aria-label="เมนู">
             <i class="bi bi-list" style="font-size:1.3rem;"></i>
         </button>
-        <a class="brand-text" href="<?= BASE_URL ?>/index.php?url=dashboard">
+        <a class="brand-text" href="<?= url('dashboard') ?>">
             <span class="seal">漫</span> <?= htmlspecialchars(APP_NAME) ?>
         </a>
         <?php if ($__currentUser): ?>
             <div class="d-flex align-items-center gap-1">
-                <a class="topbar-user" href="<?= BASE_URL ?>/index.php?url=profile" title="ข้อมูลส่วนตัว">
+                <a class="topbar-user" href="<?= url('profile') ?>" title="ข้อมูลส่วนตัว">
                     <i class="bi bi-person-circle"></i>
                 </a>
-                <a class="topbar-user" href="<?= BASE_URL ?>/index.php?url=login/logout" title="ออกจากระบบ">
+                <a class="topbar-user" href="<?= url('logout') ?>" title="ออกจากระบบ">
                     <i class="bi bi-box-arrow-right"></i>
                 </a>
             </div>

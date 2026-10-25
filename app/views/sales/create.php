@@ -83,7 +83,7 @@
 <?php if ($__isAdmin): ?>
 <div class="card p-4 mb-4">
     <form method="POST"
-          action="<?= !empty($editing) ? BASE_URL . '/index.php?url=sales/update/' . (int) $editing['id'] : BASE_URL . '/index.php?url=sales/create' ?>"
+          action="<?= !empty($editing) ? url('sales/update/' . (int) $editing['id']) : url('sales/create') ?>"
           id="saleForm">
         <?php if (!empty($editing)): ?>
             <input type="hidden" name="ref_type" value="<?= htmlspecialchars($editing['ref_type']) ?>">
@@ -195,7 +195,7 @@
         <div class="submit-bar">
             <?php if (!empty($editing)): ?>
                 <button type="submit" class="btn btn-warning"><i class="bi bi-check-circle"></i> บันทึกการแก้ไข</button>
-                <a href="<?= BASE_URL ?>/index.php?url=sales/create" class="btn btn-outline-secondary"><i class="bi bi-x-circle"></i> ยกเลิก</a>
+                <a href="<?= url('sales/create') ?>" class="btn btn-outline-secondary"><i class="bi bi-x-circle"></i> ยกเลิก</a>
                 <p class="submit-hint text-muted small mb-0"><i class="bi bi-info-circle"></i> กำลังแก้ไขรายการขาย <strong>#<?= (int) $editing['id'] ?></strong></p>
             <?php else: ?>
                 <button type="submit" class="btn btn-primary"><i class="bi bi-save"></i> บันทึกการขาย</button>
@@ -211,48 +211,46 @@
 <?php endif; ?>
 
 <div class="card p-4">
-    <div class="panel-title"><i class="bi bi-receipt"></i> รายการขายล่าสุด</div>
+    <div class="panel-title d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-receipt"></i> รายการขายล่าสุด</span>
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="btnRefreshSales"><i class="bi bi-arrow-clockwise"></i> รีเฟรช</button>
+    </div>
     <div class="table-responsive">
-        <table class="table table-sm table-flex-mobile">
-            <thead><tr><th>วันที่</th><th>รายการ</th><th>ช่องทาง</th><th>ราคาขาย</th><th>ค่าธรรมเนียม</th><th>ต้นทุน</th><th>กำไร</th><?php if ($__isAdmin): ?><th></th><?php endif; ?></tr></thead>
-            <tbody>
-            <?php foreach ($sales as $s): ?>
-                <tr>
-                    <td data-label="วันที่"><?= htmlspecialchars($s['sale_date']) ?></td>
-                    <td data-label="รายการ"><?= htmlspecialchars($s['title_snapshot']) ?></td>
-                    <td data-label="ช่องทาง"><span class="badge bg-<?= $s['channel'] === 'shopee' ? 'warning text-dark' : 'primary' ?>"><?= strtoupper($s['channel']) ?></span></td>
-                    <td data-label="ราคาขาย" class="font-mono"><?= number_format($s['sale_price'], 2) ?></td>
-                    <td data-label="ค่าธรรมเนียม" class="font-mono text-danger"><?= number_format($s['fee_amount'], 2) ?></td>
-                    <td data-label="ต้นทุน" class="font-mono"><?= number_format($s['cost_amount'], 2) ?></td>
-                    <td data-label="กำไร" class="font-mono <?= $s['profit_amount'] >= 0 ? 'text-success' : 'text-danger' ?>"><?= number_format($s['profit_amount'], 2) ?></td>
-                    <?php if ($__isAdmin): ?>
-                    <td data-label="" class="row-actions">
-                        <a class="btn btn-sm btn-outline-warning"
-                           href="<?= BASE_URL ?>/index.php?url=sales/create&edit=<?= (int)$s['id'] ?>">
-                           <i class="bi bi-pencil-square"></i> แก้ไข
-                        </a>
-                        <button type="button" class="btn btn-sm btn-outline-danger delete-sale-btn"
-                                data-id="<?= (int)$s['id'] ?>"
-                                data-title="<?= htmlspecialchars($s['title_snapshot']) ?>">
-                            <i class="bi bi-trash"></i> ลบ
-                        </button>
-                    </td>
-                    <?php endif; ?>
-                </tr>
-            <?php endforeach; ?>
-            <?php if (empty($sales)): ?>
-                <tr><td colspan="<?= $__isAdmin ? 8 : 7 ?>" class="text-center text-muted">ยังไม่มีการขาย</td></tr>
-            <?php endif; ?>
+        <table class="table table-sm table-flex-mobile align-middle">
+            <thead><tr><th>วันที่</th><th>รายการ</th><th>รหัสออเดอร์ซื้อเข้า</th><th>ช่องทาง</th><th>ราคาขาย</th><th>ค่าธรรมเนียม</th><th>ต้นทุน</th><th>กำไร</th><?php if ($__isAdmin): ?><th></th><?php endif; ?></tr></thead>
+            <tbody id="recentSalesTbody">
+                <tr><td colspan="<?= $__isAdmin ? 9 : 8 ?>" class="text-center text-muted py-4"><span class="spinner-border spinner-border-sm text-primary me-2"></span> กำลังโหลดรายการขายล่าสุด...</td></tr>
             </tbody>
         </table>
     </div>
 </div>
 
+<!-- Modal: รายละเอียดคำสั่งซื้อเข้า -->
+<div class="modal fade" id="purchaseDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title d-flex align-items-center gap-2">
+                    <i class="bi bi-receipt text-primary"></i>
+                    <span>รายละเอียดคำสั่งซื้อเข้า</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-3 p-md-4" id="purchaseDetailBody">
+                <div class="text-center text-muted py-4">กำลังโหลด...</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ปิด</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
-const availableBooks = <?= json_encode($availableBooks, JSON_UNESCAPED_UNICODE) ?>;
-const availableBundles = <?= json_encode($availableBundles, JSON_UNESCAPED_UNICODE) ?>;
-const availableBundleGroups = <?= json_encode($availableBundleGroups, JSON_UNESCAPED_UNICODE) ?>;
-const BASE_URL = "<?= BASE_URL ?>";
+const IS_ADMIN = <?= !empty($__isAdmin) ? 'true' : 'false' ?>;
+let availableBooks = [];
+let availableBundles = [];
+let availableBundleGroups = [];
 
 const refType = document.getElementById('refType');
 const refId = document.getElementById('refId');
@@ -331,60 +329,67 @@ const productMenu = document.getElementById('productMenu');
 const toggleProductMenuBtn = document.getElementById('toggleProductMenuBtn');
 
 // รวบรวมสินค้าทั้งหมด พร้อมจัดหมวดหมู่
-const allProducts = [];
+let allProducts = [];
 
-// 1. เล่มเดี่ยว / เศษเล่ม
-availableBooks.forEach(b => {
-    allProducts.push({
-        type: 'book',
-        category: 'เศษเล่ม',
-        categoryBadge: 'bg-secondary',
-        id: b.id,
-        title: `${b.title} เล่ม ${b.volume}`,
-        searchKey: `${b.title} เล่ม ${b.volume} เศษ เล่มเดี่ยว ${b.id}`.toLowerCase(),
-        cost: parseFloat(b.unit_cost) || 0,
-        desc: `เล่มเดี่ยว | ID: #${b.id}`
-    });
-});
+function buildAllProducts(books, bundles, groups) {
+    allProducts = [];
 
-// 2. ชุด (Bundle)
-availableBundles.forEach(b => {
-    allProducts.push({
-        type: 'bundle',
-        category: 'ชุด',
-        categoryBadge: 'bg-info text-dark',
-        id: b.id,
-        title: `${b.title} ชุดเล่ม ${b.volume_start}-${b.volume_end}`,
-        searchKey: `${b.title} ชุด เล่ม ${b.volume_start}-${b.volume_end} bundle ${b.id}`.toLowerCase(),
-        cost: parseFloat(b.total_cost) || 0,
-        desc: `ชุด ${b.book_count} เล่ม | Bundle #${b.id}`
+    // 1. เล่มเดี่ยว / เศษเล่ม
+    (books || []).forEach(b => {
+        allProducts.push({
+            type: 'book',
+            category: 'เศษเล่ม',
+            categoryBadge: 'bg-secondary',
+            id: b.id,
+            title: `${b.title} เล่ม ${b.volume}`,
+            searchKey: `${b.title} เล่ม ${b.volume} เศษ เล่มเดี่ยว ${b.id}`.toLowerCase(),
+            cost: parseFloat(b.unit_cost) || 0,
+            desc: `เล่มเดี่ยว | ID: #${b.id}`
+        });
     });
-});
 
-// 3. รวมกลุ่ม (Bundle Group)
-availableBundleGroups.forEach(g => {
-    let name = g.label ? g.label : `กลุ่มขายรวม #${g.id}`;
-    if (g.titles_summary) {
-        name += ` (${g.titles_summary.split('||').join(', ')})`;
-    } else if (g.titles_only) {
-        name += ` (${g.titles_only})`;
-    }
-    allProducts.push({
-        type: 'bundle_group',
-        category: 'รวมกลุ่ม',
-        categoryBadge: 'bg-warning text-dark',
-        id: g.id,
-        title: name,
-        searchKey: `${name} กลุ่ม รวมกลุ่ม bundle group ${g.id}`.toLowerCase(),
-        cost: parseFloat(g.total_cost) || 0,
-        desc: `รวม ${g.bundle_count} เรื่อง (${g.book_count} เล่ม) | Group #${g.id}`
+    // 2. ชุด (Bundle)
+    (bundles || []).forEach(b => {
+        allProducts.push({
+            type: 'bundle',
+            category: 'ชุด',
+            categoryBadge: 'bg-info text-dark',
+            id: b.id,
+            title: `${b.title} ชุดเล่ม ${b.volume_start}-${b.volume_end}`,
+            searchKey: `${b.title} ชุด เล่ม ${b.volume_start}-${b.volume_end} bundle ${b.id}`.toLowerCase(),
+            cost: parseFloat(b.total_cost) || 0,
+            desc: `ชุด ${b.book_count} เล่ม | Bundle #${b.id}`
+        });
     });
-});
+
+    // 3. รวมกลุ่ม (Bundle Group)
+    (groups || []).forEach(g => {
+        let name = g.label ? g.label : `กลุ่มขายรวม #${g.id}`;
+        if (g.titles_summary) {
+            name += ` (${g.titles_summary.split('||').join(', ')})`;
+        } else if (g.titles_only) {
+            name += ` (${g.titles_only})`;
+        }
+        allProducts.push({
+            type: 'bundle_group',
+            category: 'รวมกลุ่ม',
+            categoryBadge: 'bg-warning text-dark',
+            id: g.id,
+            title: name,
+            searchKey: `${name} กลุ่ม รวมกลุ่ม bundle group ${g.id}`.toLowerCase(),
+            cost: parseFloat(g.total_cost) || 0,
+            desc: `รวม ${g.bundle_count} เรื่อง (${g.book_count} เล่ม) | Group #${g.id}`
+        });
+    });
+}
 
 let currentCategoryFilter = 'all';
 
 function escapeHtml(s) {
     return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function escapeAttr(s) {
+    return escapeHtml(s);
 }
 
 function renderProductMenu(query = '') {
@@ -614,38 +619,261 @@ setTimeout(() => {
 }, 100);
 <?php endif; ?>
 
-/* =================== Delete sale =================== */
-document.querySelectorAll('.delete-sale-btn').forEach(btn => {
-    btn.addEventListener('click', async () => {
-        const id    = btn.dataset.id;
-        const title = btn.dataset.title || ('#' + id);
+/* =================== Dynamic Sales Table & AJAX Loading =================== */
+function renderRecentSalesTable(sales) {
+    const $tbody = $('#recentSalesTbody');
+    const cols = IS_ADMIN ? 9 : 8;
+    if (!sales || sales.length === 0) {
+        $tbody.html(`<tr><td colspan="${cols}" class="text-center text-muted py-4">ยังไม่มีการขาย</td></tr>`);
+        return;
+    }
 
-        const ok = confirm(
-            `ยืนยันลบรายการขาย #${id}?\n\n` +
-            `สินค้า: ${title}\n\n` +
-            `⚠️ ระบบจะคืนสถานะสินค้ากลับเป็น "พร้อมขาย" เพื่อให้สามารถบันทึกการขายใหม่ได้`
-        );
-        if (!ok) return;
-
-        const originalHtml = btn.innerHTML;
-        btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> กำลังลบ...';
-
-        try {
-            const res = await fetch(`${BASE_URL}/index.php?url=sales/delete/${id}`, {
-                method: 'POST',
-                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    let html = '';
+    sales.forEach(s => {
+        let sBills = [];
+        if (s.purchase_bills) {
+            s.purchase_bills.split('||').forEach(billStr => {
+                const parts = billStr.split(':');
+                if (parts.length >= 2) {
+                    sBills.push({ id: parts[0], code: parts.slice(1).join(':') });
+                }
             });
-            const json = await res.json().catch(() => ({ success: false, message: 'ตอบกลับไม่ถูกต้อง' }));
-            if (!json.success) throw new Error(json.message || 'ลบไม่สำเร็จ');
-
-            alert(json.message || 'ลบรายการขายเรียบร้อย');
-            window.location.reload();
-        } catch (e) {
-            alert('❌ ' + e.message);
-            btn.disabled = false;
-            btn.innerHTML = originalHtml;
         }
+        let billsHtml = '<span class="text-muted small">-</span>';
+        if (sBills.length > 0) {
+            billsHtml = `<div class="d-flex flex-wrap gap-1 align-items-center">
+                ${sBills.map(bill => `
+                    <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 view-purchase-btn font-mono"
+                            data-id="${escapeAttr(bill.id)}"
+                            title="คลิกดูคำสั่งซื้อ ${escapeAttr(bill.code)}"
+                            style="font-size:0.75rem;">
+                        <i class="bi bi-receipt me-1"></i>${escapeHtml(bill.code)}
+                    </button>
+                `).join('')}
+            </div>`;
+        }
+
+        const salePrice = parseFloat(s.sale_price) || 0;
+        const feeAmount = parseFloat(s.fee_amount) || 0;
+        const costAmount = parseFloat(s.cost_amount) || 0;
+        const profitAmount = parseFloat(s.profit_amount) || 0;
+        const profitClass = profitAmount >= 0 ? 'text-success' : 'text-danger';
+        const channelBadge = s.channel === 'shopee' ? 'badge bg-warning text-dark' : 'badge bg-primary';
+
+        let adminActions = '';
+        if (IS_ADMIN) {
+            adminActions = `
+                <td data-label="" class="row-actions">
+                    <a class="btn btn-sm btn-outline-warning" href="${BASE_URL}/sales/create?edit=${escapeAttr(s.id)}">
+                        <i class="bi bi-pencil-square"></i> แก้ไข
+                    </a>
+                    <button type="button" class="btn btn-sm btn-outline-danger delete-sale-btn"
+                            data-id="${escapeAttr(s.id)}"
+                            data-title="${escapeAttr(s.title_snapshot || '')}">
+                        <i class="bi bi-trash"></i> ลบ
+                    </button>
+                </td>
+            `;
+        }
+
+        html += `
+            <tr>
+                <td data-label="วันที่">${escapeHtml(s.sale_date || '')}</td>
+                <td data-label="รายการ">${escapeHtml(s.title_snapshot || '')}</td>
+                <td data-label="รหัสออเดอร์ซื้อเข้า">${billsHtml}</td>
+                <td data-label="ช่องทาง"><span class="${channelBadge}">${escapeHtml((s.channel || '').toUpperCase())}</span></td>
+                <td data-label="ราคาขาย" class="font-mono">${salePrice.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                <td data-label="ค่าธรรมเนียม" class="font-mono text-danger">${feeAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                <td data-label="ต้นทุน" class="font-mono">${costAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                <td data-label="กำไร" class="font-mono ${profitClass}">${profitAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                ${adminActions}
+            </tr>
+        `;
     });
+
+    $tbody.html(html);
+}
+
+function loadSalesData() {
+    $('#recentSalesTbody').html(`<tr><td colspan="${IS_ADMIN ? 9 : 8}" class="text-center text-muted py-4"><span class="spinner-border spinner-border-sm text-primary me-2"></span> กำลังโหลดรายการขายล่าสุด...</td></tr>`);
+    if (productSearchInput && !refId.value) {
+        productSearchInput.placeholder = 'กำลังโหลดรายการสินค้า...';
+    }
+
+    $.getJSON(`${BASE_URL}/sales/data`, function(res) {
+        if (!res.success) return;
+        availableBooks = res.availableBooks || [];
+        availableBundles = res.bundles || res.availableBundles || [];
+        availableBundleGroups = res.bundleGroups || res.availableBundleGroups || [];
+        buildAllProducts(availableBooks, availableBundles, availableBundleGroups);
+        renderRecentSalesTable(res.sales || []);
+        if (productSearchInput && !refId.value) {
+            productSearchInput.placeholder = `ค้นหาสินค้า (${allProducts.length} รายการพร้อมขาย)...`;
+        }
+    }).fail(function() {
+        $('#recentSalesTbody').html(`<tr><td colspan="${IS_ADMIN ? 9 : 8}" class="text-center text-danger py-4">โหลดข้อมูลไม่สำเร็จ</td></tr>`);
+    });
+}
+
+/* =================== Delete sale (Delegated) =================== */
+document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.delete-sale-btn');
+    if (!btn) return;
+
+    const id    = btn.dataset.id;
+    const title = btn.dataset.title || ('#' + id);
+
+    const ok = confirm(
+        `ยืนยันลบรายการขาย #${id}?\n\n` +
+        `สินค้า: ${title}\n\n` +
+        `⚠️ ระบบจะคืนสถานะสินค้ากลับเป็น "พร้อมขาย" เพื่อให้สามารถบันทึกการขายใหม่ได้`
+    );
+    if (!ok) return;
+
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> กำลังลบ...';
+
+    try {
+        const res = await fetch(`${BASE_URL}/sales/delete/${id}`, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        });
+        const json = await res.json().catch(() => ({ success: false, message: 'ตอบกลับไม่ถูกต้อง' }));
+        if (!json.success) throw new Error(json.message || 'ลบไม่สำเร็จ');
+
+        alert(json.message || 'ลบรายการขายเรียบร้อย');
+        loadSalesData();
+    } catch (err) {
+        alert('❌ ' + err.message);
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+    }
 });
+
+
+/* =================== Purchase Detail Modal =================== */
+let purchaseModal = null;
+const purchaseModalEl = document.getElementById('purchaseDetailModal');
+const purchaseModalBody = document.getElementById('purchaseDetailBody');
+
+function ensurePurchaseModal() {
+    if (!purchaseModal && typeof bootstrap !== 'undefined' && purchaseModalEl) {
+        purchaseModal = new bootstrap.Modal(purchaseModalEl);
+    }
+    return purchaseModal;
+}
+
+function renderPurchaseHtml(d) {
+    const p = d.purchase;
+    const items = p.items || [];
+    const images = d.images || [];
+    const totalBookCount = items.reduce((s, it) => s + (parseInt(it.book_count) || 0), 0);
+    const itemsTotal = items.reduce((s, it) => s + (parseFloat(it.item_price) || 0), 0);
+    const shipPerBook = totalBookCount > 0 ? (parseFloat(p.total_shipping_cost) / totalBookCount) : 0;
+
+    const headerHtml = `
+        <div class="mb-3 border-bottom pb-3">
+            <div class="d-flex justify-content-between align-items-start mb-2 flex-wrap gap-2">
+                <div>
+                    <span class="badge bg-secondary mb-1">บิล #${p.id}</span>
+                    <h5 class="mb-0 text-primary fw-bold"><i class="bi bi-receipt me-1"></i>${escapeHtml(p.purchase_code)}</h5>
+                </div>
+                <div class="text-muted small">
+                    <i class="bi bi-calendar3 me-1"></i>วันที่ซื้อ: <strong>${escapeHtml(p.purchase_date)}</strong>
+                </div>
+            </div>
+            ${p.note ? `<div class="small text-muted mb-2"><i class="bi bi-card-text me-1"></i>หมายเหตุ: ${escapeHtml(p.note)}</div>` : ''}
+            <div class="p-2 bg-light rounded d-flex flex-wrap gap-3 small">
+                <div>จำนวนเล่มรวม: <strong>${totalBookCount}</strong> เล่ม</div>
+                <div>ยอดซื้อ (ไม่รวมส่ง): <strong>${itemsTotal.toFixed(2)} ฿</strong></div>
+                <div>ค่าส่ง: <strong>${parseFloat(p.total_shipping_cost).toFixed(2)} ฿</strong></div>
+                <div>รวมทั้งบิล: <strong class="text-primary">${(itemsTotal + parseFloat(p.total_shipping_cost)).toFixed(2)} ฿</strong></div>
+            </div>
+        </div>
+    `;
+
+    let itemsHtml = '';
+    if (items.length === 0) {
+        itemsHtml = '<div class="alert alert-warning">ไม่มีรายการหนังสือในบิลนี้</div>';
+    } else {
+        itemsHtml = items.map((it, idx) => {
+            const volumes = it.volumes || [];
+            const volChips = volumes.map(v => {
+                const qty = parseInt(v.quantity) || 0;
+                const start = parseInt(v.volume_start);
+                const end = parseInt(v.volume_end);
+                const label = start === end ? `เล่ม ${start}` : `เล่ม ${start}-${end}`;
+                return `<span class="badge bg-info text-dark me-1">${label} (${qty})</span>`;
+            }).join('');
+            const unitCost = (parseFloat(it.unit_cost) || 0) + shipPerBook;
+            return `
+                <div class="mb-3 border rounded p-3 bg-white shadow-sm">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <strong><i class="bi bi-book text-primary me-1"></i> เรื่องที่ ${idx + 1}: ${escapeHtml(it.title)}</strong>
+                        <span class="badge bg-light text-dark border">${parseInt(it.book_count) || 0} เล่ม</span>
+                    </div>
+                    <div class="small my-2">${volChips || '<span class="text-muted">ไม่มีช่วงเล่ม</span>'}</div>
+                    <div class="row g-2 small pt-2 border-top">
+                        <div class="col-6 col-md-3">ราคาเรื่องนี้: <strong>${parseFloat(it.item_price).toFixed(2)} ฿</strong></div>
+                        <div class="col-6 col-md-3">ต้นทุน/เล่ม (ไม่รวมส่ง): <strong>${(parseFloat(it.unit_cost) || 0).toFixed(2)} ฿</strong></div>
+                        <div class="col-6 col-md-3">ค่าส่ง/เล่ม: <strong>${shipPerBook.toFixed(2)} ฿</strong></div>
+                        <div class="col-6 col-md-3">ต้นทุนรวม/เล่ม: <strong class="text-primary">${unitCost.toFixed(2)} ฿</strong></div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    let imagesHtml = '';
+    if (images.length > 0) {
+        const imgs = images.map(img => `
+            <a href="${BASE_URL}/${escapeHtml(img.image_path)}" target="_blank" title="คลิกดูภาพเต็ม">
+                <img src="${BASE_URL}/${escapeHtml(img.image_path)}"
+                     alt="slip"
+                     style="width:110px;height:110px;object-fit:cover;border:1px solid #ddd;border-radius:6px;">
+            </a>
+        `).join('');
+        imagesHtml = `
+            <div class="mt-3">
+                <div class="fw-semibold mb-2"><i class="bi bi-image text-primary me-1"></i> รูปสลิปการซื้อ (${images.length})</div>
+                <div class="d-flex flex-wrap gap-2">${imgs}</div>
+            </div>
+        `;
+    }
+
+    return headerHtml + itemsHtml + imagesHtml;
+}
+
+document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.view-purchase-btn');
+    if (!btn) return;
+    const id = btn.dataset.id;
+    if (!id) return;
+    const modal = ensurePurchaseModal();
+    if (!modal) { alert('Bootstrap ยังโหลดไม่เสร็จ กรุณาลองใหม่'); return; }
+    purchaseModalBody.innerHTML = `
+        <div class="text-center text-muted py-5">
+            <div class="spinner-border text-primary spinner-border-sm me-2" role="status"></div>
+            กำลังโหลดข้อมูลคำสั่งซื้อ...
+        </div>
+    `;
+    modal.show();
+    try {
+        const res = await fetch(`${BASE_URL}/purchase/detail/${id}`);
+        const json = await res.json();
+        if (!json.success) throw new Error(json.message || 'โหลดข้อมูลไม่สำเร็จ');
+        purchaseModalBody.innerHTML = renderPurchaseHtml(json.data);
+    } catch (err) {
+        purchaseModalBody.innerHTML = `<div class="alert alert-danger"><i class="bi bi-exclamation-triangle me-1"></i> ${escapeHtml(err.message)}</div>`;
+    }
+});
+
+// Load sales data & available products asynchronously
+loadSalesData();
+
+const btnRefreshSales = document.getElementById('btnRefreshSales');
+if (btnRefreshSales) {
+    btnRefreshSales.addEventListener('click', loadSalesData);
+}
 </script>

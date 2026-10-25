@@ -23,11 +23,26 @@ class StockController extends Controller
     {
         $title = $this->input('title', '');
 
+        if ($this->isAjax()) {
+            $this->data();
+            return;
+        }
+
         $this->view('stock/index', [
-            'stockSummary'   => $this->inventoryModel->getStockSummaryByTitle(),
-            'selectedTitle'  => $title,
-            'books'          => $title !== '' ? $this->inventoryModel->getBooksByTitle($title) : [],
-            'purchases'      => $title !== '' ? $this->inventoryModel->getPurchasesByTitle($title) : [],
+            'selectedTitle' => $title,
+        ]);
+    }
+
+    public function data(): void
+    {
+        $title = $this->input('title', '');
+
+        $this->json([
+            'success'       => true,
+            'selectedTitle' => $title,
+            'stockSummary'  => $this->inventoryModel->getStockSummaryByTitle(),
+            'books'         => $title !== '' ? $this->inventoryModel->getBooksByTitle($title, true) : [],
+            'purchases'     => $title !== '' ? $this->inventoryModel->getPurchasesByTitle($title, true) : [],
         ]);
     }
 
@@ -44,10 +59,22 @@ class StockController extends Controller
             return;
         }
 
-        $this->view('stock/bundle', [
-            'titles'        => $this->inventoryModel->getDistinctTitlesWithStock(),
-            'bundles'       => $this->bundleModel->getAvailableBundles(),
-            'bundleGroups'  => $this->bundleModel->getAvailableBundleGroups(),
+        if ($this->isAjax()) {
+            $this->bundleData();
+            return;
+        }
+
+        $this->view('stock/bundle');
+    }
+
+    public function bundleData(): void
+    {
+        $this->requireAdmin();
+        $this->json([
+            'success'      => true,
+            'titles'       => $this->inventoryModel->getDistinctTitlesWithStock(),
+            'bundles'      => $this->bundleModel->getAvailableBundles(),
+            'bundleGroups' => $this->bundleModel->getAvailableBundleGroups(),
         ]);
     }
 

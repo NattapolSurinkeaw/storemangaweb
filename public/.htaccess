@@ -1,9 +1,32 @@
+<IfModule mod_rewrite.c>
 RewriteEngine On
 
-# ถ้า request ตรงกับไฟล์/โฟลเดอร์จริง ให้ใช้ไฟล์นั้นเลย (เช่น css/js)
+# ป้องกัน Directory Browsing
+Options -Indexes
+
+# -------------------------------------------------------------
+# 1. ซ่อน/ตัดนามสกุล .php ออกจาก URL โดยทำ 301 Redirect
+# ตัวอย่าง: หากผู้ใช้พิมพ์ /stock.php จะถูกเปลี่ยนเป็น /stock ทันที
+# -------------------------------------------------------------
+RewriteCond %{THE_REQUEST} ^[A-Z]{3,}\s/+([^?\s]+)\.php(?:\?([^\s]*))?\s+HTTP [NC]
+RewriteCond %{REQUEST_URI} !^/index\.php [NC]
+RewriteRule ^ /%1 [R=301,L]
+
+# -------------------------------------------------------------
+# 2. แปลงการเรียก index.php?url=xxx ให้เป็น Clean URL /xxx
+# -------------------------------------------------------------
+RewriteCond %{THE_REQUEST} ^[A-Z]{3,}\s/+index\.php\?url=([^\s&]+) [NC]
+RewriteRule ^ %1? [R=301,L]
+
+# -------------------------------------------------------------
+# 3. ถ้าเป็นไฟล์หรือโฟลเดอร์จริง (เช่น assets: css, js, uploads) ให้เข้าถึงได้โดยตรง
+# -------------------------------------------------------------
 RewriteCond %{REQUEST_FILENAME} -f [OR]
 RewriteCond %{REQUEST_FILENAME} -d
 RewriteRule ^ - [L]
 
-# มิฉะนั้นส่งทุก request เข้า index.php?url=...
+# -------------------------------------------------------------
+# 4. ส่งทุก Request เข้าสู่ Front Controller (index.php)
+# -------------------------------------------------------------
 RewriteRule ^(.*)$ index.php?url=$1 [QSA,L]
+</IfModule>

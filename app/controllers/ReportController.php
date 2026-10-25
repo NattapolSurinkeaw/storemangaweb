@@ -18,6 +18,11 @@ class ReportController extends Controller
      */
     public function index(): void
     {
+        if ($this->isAjax()) {
+            $this->data();
+            return;
+        }
+
         $bounds = $this->reportModel->getDateBounds();
 
         // รับค่า filter
@@ -28,9 +33,44 @@ class ReportController extends Controller
         $startDate = $this->input('start_date', '');
         $endDate   = $this->input('end_date', '');
 
+        // ประมวลผล Preset เริ่มต้นสำหรับ input
+        $currentYear = date('Y');
+        if ($preset === 'this_year') {
+            $startDate = "{$currentYear}-01-01";
+            $endDate   = "{$currentYear}-12-31";
+        } elseif ($preset === 'this_month') {
+            $startDate = date('Y-m-01');
+            $endDate   = date('Y-m-t');
+        } elseif ($preset === 'last_30_days') {
+            $startDate = date('Y-m-d', strtotime('-30 days'));
+            $endDate   = date('Y-m-d');
+        }
+
+        if (!in_array($groupBy, ['month', 'day', 'year'], true)) {
+            $groupBy = 'month';
+        }
+
+        $this->view('report/index', [
+            'bounds'    => $bounds,
+            'preset'    => $preset,
+            'groupBy'   => $groupBy,
+            'channel'   => $channel,
+            'startDate' => $startDate,
+            'endDate'   => $endDate,
+        ]);
+    }
+
+    public function data(): void
+    {
+        $preset = $this->input('preset', 'all');
+        $groupBy = $this->input('group_by', 'month');
+        $channel = $this->input('channel', 'all');
+
+        $startDate = $this->input('start_date', '');
+        $endDate   = $this->input('end_date', '');
+
         // ประมวลผล Preset
         $currentYear = date('Y');
-        $currentMonth = date('m');
 
         if ($preset === 'this_year') {
             $startDate = "{$currentYear}-01-01";
@@ -44,27 +84,19 @@ class ReportController extends Controller
         } elseif ($preset === 'all') {
             $startDate = '';
             $endDate   = '';
-        } elseif ($preset === 'custom') {
-            // ใช้ค่าที่ส่งมาจาก input
-        } else {
-            $preset = 'all';
-            $startDate = '';
-            $endDate   = '';
         }
 
-        // หาก group_by ไม่ถูกต้อง ให้ fallback เป็น month
         if (!in_array($groupBy, ['month', 'day', 'year'], true)) {
             $groupBy = 'month';
         }
 
-        // ดึงข้อมูล
         $summary   = $this->reportModel->getSummaryMetrics($startDate ?: null, $endDate ?: null, $channel);
         $timeline  = $this->reportModel->getTimelineComparison($startDate ?: null, $endDate ?: null, $groupBy, $channel);
         $purchases = $this->reportModel->getPurchasesList($startDate ?: null, $endDate ?: null);
         $sales     = $this->reportModel->getSalesList($startDate ?: null, $endDate ?: null, $channel);
 
-        $this->view('report/index', [
-            'bounds'    => $bounds,
+        $this->json([
+            'success'   => true,
             'preset'    => $preset,
             'groupBy'   => $groupBy,
             'channel'   => $channel,

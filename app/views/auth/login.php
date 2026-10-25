@@ -133,7 +133,7 @@ $__username = htmlspecialchars($__old['username'] ?? '');
       <?php unset($_SESSION['flash']); ?>
     <?php endif; ?>
 
-    <form method="POST" action="<?= BASE_URL ?>/index.php?url=login" autocomplete="off" novalidate>
+    <form method="POST" action="<?= url('login') ?>" autocomplete="off" novalidate>
       <div class="form-floating mb-3">
         <input type="text" class="form-control" id="username" name="username"
                placeholder="ชื่อผู้ใช้" required autofocus

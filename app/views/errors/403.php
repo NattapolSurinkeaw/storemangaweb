@@ -51,10 +51,10 @@
     ไม่มีสิทธิ์ใช้งานส่วนนี้<br>
     ต้องใช้สิทธิ์ระดับ <strong>admin</strong> เท่านั้น
   </p>
-  <a href="<?= BASE_URL ?>/index.php?url=dashboard" class="btn btn-primary">
+  <a href="<?= url('dashboard') ?>" class="btn btn-primary">
     <i class="bi bi-arrow-left"></i> กลับหน้า Dashboard
   </a>
-  <a href="<?= BASE_URL ?>/index.php?url=login/logout" class="btn btn-outline-secondary">
+  <a href="<?= url('login/logout') ?>" class="btn btn-outline-secondary">
     <i class="bi bi-box-arrow-right"></i> ออกจากระบบ
   </a>
 </div>

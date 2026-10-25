@@ -29,7 +29,7 @@
 <?php if ($__isAdmin): ?>
 <div class="card p-4 mb-4">
     <form method="POST"
-          action="<?= !empty($editing) ? BASE_URL . '/index.php?url=purchase/update/' . (int) $editing['id'] : BASE_URL . '/index.php?url=purchase/create' ?>"
+          action="<?= !empty($editing) ? url('purchase/update/' . (int) $editing['id']) : url('purchase/create') ?>"
           id="purchaseForm" enctype="multipart/form-data">
         <div class="row g-3 mb-3">
             <div class="col-md-4">
@@ -97,7 +97,7 @@
                 <button type="submit" class="btn btn-warning">
                     <i class="bi bi-check-circle"></i> บันทึกการแก้ไข
                 </button>
-                <a href="<?= BASE_URL ?>/index.php?url=purchase/create" class="btn btn-outline-secondary">
+                <a href="<?= url('purchase/create') ?>" class="btn btn-outline-secondary">
                     <i class="bi bi-x-circle"></i> ยกเลิกการแก้ไข
                 </a>
                 <p class="submit-hint text-muted small mb-0">
@@ -122,58 +122,15 @@ const PURCHASE_PREFILL = <?= json_encode(!empty($editing) ? $editing['items'] : 
 <?php endif; ?>
 
 <div class="card p-4">
-    <div class="panel-title"><i class="bi bi-clock-history"></i> ประวัติบิลซื้อเข้า</div>
+    <div class="panel-title d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-clock-history"></i> ประวัติบิลซื้อเข้า</span>
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="btnRefreshPurchases"><i class="bi bi-arrow-clockwise"></i> รีเฟรช</button>
+    </div>
     <div class="table-responsive">
         <table class="table table-sm table-flex-mobile align-middle">
             <thead><tr><th>#</th><th>รหัสบิล</th><th>วันที่</th><th>note</th><th>จำนวนเล่ม</th><th>ยอดซื้อ (ไม่รวมส่ง)</th><th>ค่าส่ง</th><th>ยอดรวม</th><th>รูปสลิป</th><th></th></tr></thead>
-            <tbody>
-            <?php foreach ($purchases as $p): ?>
-                <tr>
-                    <td><?= (int)$p['id'] ?></td>
-                    <td><?= htmlspecialchars($p['purchase_code']) ?></td>
-                    <td><?= htmlspecialchars($p['purchase_date']) ?></td>
-                    <td><?= htmlspecialchars($p['note']) ?></td>
-                    <td><?= (int)$p['book_count'] ?></td>
-                    <td><?= number_format((float)$p['items_total'], 2) ?> ฿</td>
-                    <td><?= number_format((float)$p['total_shipping_cost'], 2) ?> ฿</td>
-                    <td><?= number_format((float)$p['items_total'] + (float)$p['total_shipping_cost'], 2) ?> ฿</td>
-                    <td>
-                        <?php if (!empty($p['first_image'])): ?>
-                            <a href="<?= BASE_URL ?>/<?= htmlspecialchars($p['first_image']) ?>" target="_blank" title="ดูรูปสลิป">
-                                <img src="<?= BASE_URL ?>/<?= htmlspecialchars($p['first_image']) ?>"
-                                     alt="slip"
-                                     style="width:54px;height:54px;object-fit:cover;border:1px solid #ddd;border-radius:6px;">
-                            </a>
-                            <?php if ((int)($p['image_count'] ?? 0) > 1): ?>
-                                <span class="badge bg-secondary">+<?= (int)$p['image_count'] - 1 ?></span>
-                            <?php endif; ?>
-                        <?php else: ?>
-                            <span class="text-muted small">—</span>
-                        <?php endif; ?>
-                    </td>
-                    <td data-label="" class="row-actions">
-                        <button type="button" class="btn btn-sm btn-outline-primary view-purchase-btn"
-                                data-id="<?= (int)$p['id'] ?>">
-                            <i class="bi bi-eye"></i> ดู
-                        </button>
-                        <?php if ($__isAdmin): ?>
-                        <a class="btn btn-sm btn-outline-warning"
-                           href="<?= BASE_URL ?>/index.php?url=purchase/create&edit=<?= (int)$p['id'] ?>">
-                           <i class="bi bi-pencil-square"></i> แก้ไข
-                        </a>
-                        <button type="button" class="btn btn-sm btn-outline-danger delete-purchase-btn"
-                                data-id="<?= (int)$p['id'] ?>"
-                                data-code="<?= htmlspecialchars($p['purchase_code']) ?>"
-                                data-books="<?= (int)$p['book_count'] ?>">
-                            <i class="bi bi-trash"></i> ลบ
-                        </button>
-                        <?php endif; ?>
-                    </td>
-                </tr>
-            <?php endforeach; ?>
-            <?php if (empty($purchases)): ?>
-                <tr><td colspan="8" class="text-center text-muted">ยังไม่มีบิลซื้อ</td></tr>
-            <?php endif; ?>
+            <tbody id="purchaseHistoryTbody">
+                <tr><td colspan="10" class="text-center text-muted py-4"><span class="spinner-border spinner-border-sm text-primary me-2"></span> กำลังโหลดประวัติบิลซื้อ...</td></tr>
             </tbody>
         </table>
     </div>
@@ -427,6 +384,9 @@ function ensurePurchaseModal() {
 function escapeHtml(s) {
     return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
+function escapeAttr(s) {
+    return escapeHtml(s);
+}
 
 function renderPurchaseHtml(d) {
     const p = d.purchase;
@@ -505,22 +465,102 @@ function renderPurchaseHtml(d) {
     return headerHtml + itemsHtml + imagesHtml;
 }
 
-document.querySelectorAll('.view-purchase-btn').forEach(btn => {
-    btn.addEventListener('click', async () => {
-        const id = btn.dataset.id;
-        const modal = ensurePurchaseModal();
-        if (!modal) { alert('Bootstrap ยังโหลดไม่เสร็จ กรุณาลองใหม่'); return; }
-        purchaseModalBody.innerHTML = '<div class="text-center text-muted py-4">กำลังโหลด...</div>';
-        modal.show();
-        try {
-            const res = await fetch(`${PURCHASE_BASE_URL}/index.php?url=purchase/detail/${id}`);
-            const json = await res.json();
-            if (!json.success) throw new Error(json.message || 'โหลดข้อมูลไม่สำเร็จ');
-            purchaseModalBody.innerHTML = renderPurchaseHtml(json.data);
-        } catch (e) {
-            purchaseModalBody.innerHTML = `<div class="alert alert-danger">${escapeHtml(e.message)}</div>`;
+const IS_ADMIN = <?= !empty($__isAdmin) ? 'true' : 'false' ?>;
+
+function renderPurchasesTable(purchases) {
+    const $tbody = $('#purchaseHistoryTbody');
+    if (!purchases || purchases.length === 0) {
+        $tbody.html('<tr><td colspan="10" class="text-center text-muted py-4">ยังไม่มีบิลซื้อ</td></tr>');
+        return;
+    }
+
+    let html = '';
+    purchases.forEach(p => {
+        const id = parseInt(p.id);
+        const bookCount = parseInt(p.book_count) || 0;
+        const itemsTotal = parseFloat(p.items_total) || 0;
+        const shipping = parseFloat(p.total_shipping_cost) || 0;
+        const total = itemsTotal + shipping;
+        const imgCount = parseInt(p.image_count) || 0;
+
+        let imgHtml = '<span class="text-muted small">—</span>';
+        if (p.first_image) {
+            let badge = imgCount > 1 ? `<span class="badge bg-secondary ms-1">+${imgCount - 1}</span>` : '';
+            imgHtml = `
+                <a href="${BASE_URL}/${escapeAttr(p.first_image)}" target="_blank" title="ดูรูปสลิป">
+                    <img src="${BASE_URL}/${escapeAttr(p.first_image)}" alt="slip" style="width:54px;height:54px;object-fit:cover;border:1px solid #ddd;border-radius:6px;">
+                </a>${badge}
+            `;
         }
+
+        let adminActions = '';
+        if (IS_ADMIN) {
+            adminActions = `
+                <a class="btn btn-sm btn-outline-warning" href="${BASE_URL}/purchase/create?edit=${id}">
+                    <i class="bi bi-pencil-square"></i> แก้ไข
+                </a>
+                <button type="button" class="btn btn-sm btn-outline-danger delete-purchase-btn"
+                        data-id="${id}"
+                        data-code="${escapeAttr(p.purchase_code || '')}"
+                        data-books="${bookCount}">
+                    <i class="bi bi-trash"></i> ลบ
+                </button>
+            `;
+        }
+
+        html += `
+            <tr>
+                <td data-label="#">${id}</td>
+                <td data-label="รหัสบิล">${escapeHtml(p.purchase_code || '')}</td>
+                <td data-label="วันที่">${escapeHtml(p.purchase_date || '')}</td>
+                <td data-label="note">${escapeHtml(p.note || '')}</td>
+                <td data-label="จำนวนเล่ม">${bookCount.toLocaleString()}</td>
+                <td data-label="ยอดซื้อ (ไม่รวมส่ง)">${itemsTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} ฿</td>
+                <td data-label="ค่าส่ง">${shipping.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} ฿</td>
+                <td data-label="ยอดรวม">${total.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} ฿</td>
+                <td data-label="รูปสลิป">${imgHtml}</td>
+                <td data-label="" class="row-actions">
+                    <button type="button" class="btn btn-sm btn-outline-primary view-purchase-btn" data-id="${id}">
+                        <i class="bi bi-eye"></i> ดู
+                    </button>
+                    ${adminActions}
+                </td>
+            </tr>
+        `;
     });
+
+    $tbody.html(html);
+}
+
+function loadPurchasesList() {
+    $('#purchaseHistoryTbody').html('<tr><td colspan="10" class="text-center text-muted py-4"><span class="spinner-border spinner-border-sm text-primary me-2"></span> กำลังโหลดประวัติบิลซื้อ...</td></tr>');
+    $.getJSON(`${BASE_URL}/purchase/list`, function(res) {
+        if (res && res.success) {
+            renderPurchasesTable(res.purchases || []);
+        } else {
+            $('#purchaseHistoryTbody').html('<tr><td colspan="10" class="text-center text-danger py-4">โหลดข้อมูลไม่สำเร็จ</td></tr>');
+        }
+    }).fail(function() {
+        $('#purchaseHistoryTbody').html('<tr><td colspan="10" class="text-center text-danger py-4">เกิดข้อผิดพลาดในการโหลดข้อมูล</td></tr>');
+    });
+}
+
+document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.view-purchase-btn');
+    if (!btn) return;
+    const id = btn.dataset.id;
+    const modal = ensurePurchaseModal();
+    if (!modal) { alert('Bootstrap ยังโหลดไม่เสร็จ กรุณาลองใหม่'); return; }
+    purchaseModalBody.innerHTML = '<div class="text-center text-muted py-4">กำลังโหลด...</div>';
+    modal.show();
+    try {
+        const res = await fetch(`${BASE_URL}/purchase/detail/${id}`);
+        const json = await res.json();
+        if (!json.success) throw new Error(json.message || 'โหลดข้อมูลไม่สำเร็จ');
+        purchaseModalBody.innerHTML = renderPurchaseHtml(json.data);
+    } catch (err) {
+        purchaseModalBody.innerHTML = `<div class="alert alert-danger">${escapeHtml(err.message)}</div>`;
+    }
 });
 
 document.addEventListener('DOMContentLoaded', ensurePurchaseModal);
@@ -529,41 +569,50 @@ if (document.readyState === 'interactive' || document.readyState === 'complete')
 }
 
 /* =================== Delete purchase =================== */
-document.querySelectorAll('.delete-purchase-btn').forEach(btn => {
-    btn.addEventListener('click', async () => {
-        const id   = btn.dataset.id;
-        const code = btn.dataset.code || ('#' + id);
-        const books = parseInt(btn.dataset.books) || 0;
+document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.delete-purchase-btn');
+    if (!btn) return;
 
-        const ok = confirm(
-            `ยืนยันลบบิลซื้อ "${code}"?\n\n` +
-            `จะลบ:\n` +
-            `• รายการหนังสือทั้งหมดในบิล\n` +
-            `• หนังสือในสต็อก (${books} เล่ม)\n` +
-            `• รูปสลิปแนบ (ถ้ามี)\n\n` +
-            `⚠️ ไม่สามารถลบได้หากมีหนังสือในบิลถูกขายไปแล้วหรืออยู่ในชุดขาย`
-        );
-        if (!ok) return;
+    const id   = btn.dataset.id;
+    const code = btn.dataset.code || ('#' + id);
+    const books = parseInt(btn.dataset.books) || 0;
 
-        const originalHtml = btn.innerHTML;
-        btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> กำลังลบ...';
+    const ok = confirm(
+        `ยืนยันลบบิลซื้อ "${code}"?\n\n` +
+        `จะลบ:\n` +
+        `• รายการหนังสือทั้งหมดในบิล\n` +
+        `• หนังสือในสต็อก (${books} เล่ม)\n` +
+        `• รูปสลิปแนบ (ถ้ามี)\n\n` +
+        `⚠️ ไม่สามารถลบได้หากมีหนังสือในบิลถูกขายไปแล้วหรืออยู่ในชุดขาย`
+    );
+    if (!ok) return;
 
-        try {
-            const res = await fetch(`${PURCHASE_BASE_URL}/index.php?url=purchase/delete/${id}`, {
-                method: 'POST',
-                headers: { 'X-Requested-With': 'XMLHttpRequest' },
-            });
-            const json = await res.json().catch(() => ({ success: false, message: 'ตอบกลับไม่ถูกต้อง' }));
-            if (!json.success) throw new Error(json.message || 'ลบไม่สำเร็จ');
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> กำลังลบ...';
 
-            alert(json.message || 'ลบบิลซื้อเรียบร้อย');
-            window.location.reload();
-        } catch (e) {
-            alert('❌ ' + e.message);
-            btn.disabled = false;
-            btn.innerHTML = originalHtml;
-        }
-    });
+    try {
+        const res = await fetch(`${BASE_URL}/purchase/delete/${id}`, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        });
+        const json = await res.json().catch(() => ({ success: false, message: 'ตอบกลับไม่ถูกต้อง' }));
+        if (!json.success) throw new Error(json.message || 'ลบไม่สำเร็จ');
+
+        alert(json.message || 'ลบบิลซื้อเรียบร้อย');
+        loadPurchasesList();
+    } catch (err) {
+        alert('❌ ' + err.message);
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+    }
 });
+
+// Load purchases list on page load
+loadPurchasesList();
+
+const btnRefreshPurchases = document.getElementById('btnRefreshPurchases');
+if (btnRefreshPurchases) {
+    btnRefreshPurchases.addEventListener('click', loadPurchasesList);
+}
 </script>

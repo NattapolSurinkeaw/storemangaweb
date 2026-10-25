@@ -47,7 +47,7 @@
 </style>
 
 <div class="card p-4 mb-4">
-    <form method="POST" action="<?= BASE_URL ?>/index.php?url=stock/bundle" id="bundleForm" enctype="multipart/form-data">
+    <form method="POST" action="<?= url('stock/bundle') ?>" id="bundleForm" enctype="multipart/form-data">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <strong><i class="bi bi-grid"></i> รายการเรื่องที่จะจัดชุด</strong>
             <button type="button" id="addItemBtn" class="btn btn-sm btn-outline-primary">
@@ -116,12 +116,11 @@
     </form>
 </div>
 
-<?php if (!empty($bundles)): ?>
-<div class="card p-4 mb-4">
+<div class="card p-4 mb-4" id="combineCard" style="display:none;">
     <div class="d-flex justify-content-between align-items-center mb-2">
         <div class="panel-title mb-0"><i class="bi bi-link-45deg"></i> รวมชุดสำเร็จรูปเข้าเป็นกลุ่มขายเดียว</div>
     </div>
-    <form method="POST" action="<?= BASE_URL ?>/index.php?url=stock/bundle" id="combineForm" enctype="multipart/form-data">
+    <form method="POST" action="<?= url('stock/bundle') ?>" id="combineForm" enctype="multipart/form-data">
         <input type="hidden" name="action" value="combine">
         <div class="row g-2 align-items-end mb-2">
             <div class="col-12 col-sm-6 col-md-4">
@@ -145,197 +144,27 @@
                     <th style="width:40px;"><input type="checkbox" id="checkAllBundles"></th>
                     <th>#</th><th>รูป</th><th>เรื่อง</th><th>ช่วงเล่ม</th><th>บิลซื้อเข้า</th><th>จำนวนเล่ม</th><th>ต้นทุนรวม</th>
                 </tr></thead>
-                <tbody>
-                <?php foreach ($bundles as $b): ?>
-                    <?php
-                    $bBills = [];
-                    if (!empty($b['purchase_bills'])) {
-                        foreach (explode('||', $b['purchase_bills']) as $billStr) {
-                            $parts = explode(':', $billStr, 2);
-                            if (count($parts) === 2) {
-                                $bBills[] = ['id' => (int)$parts[0], 'code' => $parts[1]];
-                            }
-                        }
-                    }
-                    ?>
-                    <tr>
-                        <td data-label="เลือก"><input type="checkbox" class="bundle-check" name="bundle_ids[]" value="<?= (int)$b['id'] ?>"></td>
-                        <td data-label="#"><?= (int)$b['id'] ?></td>
-                        <td data-label="รูป">
-                            <?php if (!empty($b['cover_image'])): ?>
-                                <img src="<?= BASE_URL ?>/<?= htmlspecialchars($b['cover_image']) ?>"
-                                     alt="cover"
-                                     class="thumb-xs">
-                            <?php else: ?>
-                                <span class="text-muted small">ไม่มีรูป</span>
-                            <?php endif; ?>
-                        </td>
-                        <td data-label="เรื่อง"><?= htmlspecialchars($b['title']) ?></td>
-                        <td data-label="ช่วงเล่ม"><span class="badge bg-info text-dark">เล่ม <?= (int)$b['volume_start'] ?> - <?= (int)$b['volume_end'] ?></span></td>
-                        <td data-label="บิลซื้อเข้า">
-                            <?php if (!empty($bBills)): ?>
-                                <div class="d-flex flex-column gap-1 align-items-start">
-                                    <?php foreach ($bBills as $bill): ?>
-                                        <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 view-purchase-btn" data-id="<?= $bill['id'] ?>" title="คลิกดูคำสั่งซื้อ <?= htmlspecialchars($bill['code']) ?>" style="font-size:0.75rem;">
-                                            <i class="bi bi-receipt me-1"></i><?= htmlspecialchars($bill['code']) ?>
-                                        </button>
-                                    <?php endforeach; ?>
-                                </div>
-                            <?php else: ?>
-                                <span class="text-muted small">-</span>
-                            <?php endif; ?>
-                        </td>
-                        <td data-label="จำนวนเล่ม"><?= (int)$b['book_count'] ?></td>
-                        <td data-label="ต้นทุนรวม"><?= number_format((float)$b['total_cost'], 2) ?> ฿</td>
-                    </tr>
-                <?php endforeach; ?>
+                <tbody id="combineBundlesTbody">
+                    <tr><td colspan="8" class="text-center text-muted py-3"><span class="spinner-border spinner-border-sm text-primary me-2"></span> กำลังโหลดชุดสำหรับรวมกลุ่ม...</td></tr>
                 </tbody>
             </table>
         </div>
     </form>
 </div>
-<?php endif; ?>
 
 <div class="card p-4">
-    <div class="panel-title"><i class="bi bi-bookshelf"></i> ชุดที่พร้อมขาย</div>
+    <div class="panel-title d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-bookshelf"></i> ชุดที่พร้อมขาย</span>
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="btnRefreshBundles"><i class="bi bi-arrow-clockwise"></i> รีเฟรช</button>
+    </div>
     <div class="table-responsive">
         <table class="table table-sm table-flex-mobile align-middle">
             <thead><tr>
                 <th>#</th><th>ประเภท</th><th>รูป</th><th>เรื่อง</th><th>ช่วงเล่ม</th>
                 <th>บิลซื้อเข้า</th><th>จำนวนเล่ม</th><th>ต้นทุนรวม</th><th>ต้นทุน/เล่ม</th><th></th>
             </tr></thead>
-            <tbody>
-            <?php foreach ($bundleGroups as $g): ?>
-                <?php
-                $gBills = [];
-                if (!empty($g['purchase_bills'])) {
-                    foreach (explode('||', $g['purchase_bills']) as $billStr) {
-                        $parts = explode(':', $billStr, 2);
-                        if (count($parts) === 2) {
-                            $gBills[] = ['id' => (int)$parts[0], 'code' => $parts[1]];
-                        }
-                    }
-                }
-                ?>
-                <tr>
-                    <td data-label="#">#<?= (int)$g['id'] ?></td>
-                    <td data-label="ประเภท"><span class="badge bg-warning text-dark"><i class="bi bi-box2-heart"></i> กลุ่มรวม</span></td>
-                    <td data-label="รูป">
-                        <?php if (!empty($g['cover_image'])): ?>
-                            <img src="<?= BASE_URL ?>/<?= htmlspecialchars($g['cover_image']) ?>"
-                                 alt="cover"
-                                 class="thumb-xs">
-                        <?php else: ?>
-                            <span class="text-muted small">ไม่มีรูป</span>
-                        <?php endif; ?>
-                    </td>
-                    <td data-label="เรื่อง">
-                        <?php if (!empty($g['label'])): ?>
-                            <div class="fw-semibold text-primary mb-1">
-                                <?= htmlspecialchars($g['label']) ?>
-                            </div>
-                        <?php endif; ?>
-                        <?php if (!empty($g['titles_summary'])): ?>
-                            <?php $titleList = explode('||', $g['titles_summary']); ?>
-                            <div class="d-flex flex-column gap-1">
-                                <?php foreach ($titleList as $tItem): ?>
-                                    <div class="fw-medium text-dark">
-                                        <i class="bi bi-journal-bookmark me-1 text-primary"></i><?= htmlspecialchars(trim($tItem)) ?>
-                                    </div>
-                                <?php endforeach; ?>
-                            </div>
-                        <?php endif; ?>
-                    </td>
-                    <td data-label="ช่วงเล่ม">
-                        <span class="badge bg-info text-dark">รวมหลายเรื่อง</span>
-                    </td>
-                    <td data-label="บิลซื้อเข้า">
-                        <?php if (!empty($gBills)): ?>
-                            <div class="d-flex flex-column gap-1 align-items-start">
-                                <?php foreach ($gBills as $bill): ?>
-                                    <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 view-purchase-btn" data-id="<?= $bill['id'] ?>" title="คลิกดูคำสั่งซื้อ <?= htmlspecialchars($bill['code']) ?>" style="font-size:0.75rem;">
-                                        <i class="bi bi-receipt me-1"></i><?= htmlspecialchars($bill['code']) ?>
-                                    </button>
-                                <?php endforeach; ?>
-                            </div>
-                        <?php else: ?>
-                            <span class="text-muted small">-</span>
-                        <?php endif; ?>
-                    </td>
-                    <td data-label="จำนวนเล่ม"><?= (int)$g['book_count'] ?></td>
-                    <td data-label="ต้นทุนรวม"><?= number_format((float)$g['total_cost'], 2) ?> ฿</td>
-                    <td data-label="ต้นทุน/เล่ม" class="text-muted"><?= $g['book_count'] > 0 ? number_format((float)$g['total_cost'] / $g['book_count'], 2) : '0.00' ?> ฿</td>
-                    <td data-label="" class="row-actions">
-                        <button type="button" class="btn btn-sm btn-outline-primary view-group-btn"
-                                data-id="<?= (int)$g['id'] ?>">
-                            <i class="bi bi-eye"></i> ดู
-                        </button>
-                        <a class="btn btn-sm btn-outline-danger"
-                           href="<?= BASE_URL ?>/index.php?url=stock/dissolveBundleGroup/<?= (int)$g['id'] ?>"
-                           onclick="return confirm('ยืนยันยกเลิกกลุ่ม #<?= (int)$g['id'] ?> และคืนเล่มทุกเรื่องเข้าสต็อก?');">
-                           <i class="bi bi-x-circle"></i> ยกเลิก
-                        </a>
-                    </td>
-                </tr>
-            <?php endforeach; ?>
-            <?php foreach ($bundles as $b): ?>
-                <?php
-                $bBills = [];
-                if (!empty($b['purchase_bills'])) {
-                    foreach (explode('||', $b['purchase_bills']) as $billStr) {
-                        $parts = explode(':', $billStr, 2);
-                        if (count($parts) === 2) {
-                            $bBills[] = ['id' => (int)$parts[0], 'code' => $parts[1]];
-                        }
-                    }
-                }
-                ?>
-                <tr>
-                    <td data-label="#"><?= (int)$b['id'] ?></td>
-                    <td data-label="ประเภท"><span class="badge bg-secondary"><i class="bi bi-collection"></i> ชุดเดี่ยว</span></td>
-                    <td data-label="รูป">
-                        <?php if (!empty($b['cover_image'])): ?>
-                            <img src="<?= BASE_URL ?>/<?= htmlspecialchars($b['cover_image']) ?>"
-                                 alt="cover"
-                                 class="thumb-xs">
-                        <?php else: ?>
-                            <span class="text-muted small">ไม่มีรูป</span>
-                        <?php endif; ?>
-                    </td>
-                    <td data-label="เรื่อง"><?= htmlspecialchars($b['title']) ?></td>
-                    <td data-label="ช่วงเล่ม"><span class="badge bg-info text-dark">เล่ม <?= (int)$b['volume_start'] ?> - <?= (int)$b['volume_end'] ?></span></td>
-                    <td data-label="บิลซื้อเข้า">
-                        <?php if (!empty($bBills)): ?>
-                            <div class="d-flex flex-column gap-1 align-items-start">
-                                <?php foreach ($bBills as $bill): ?>
-                                    <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 view-purchase-btn" data-id="<?= $bill['id'] ?>" title="คลิกดูคำสั่งซื้อ <?= htmlspecialchars($bill['code']) ?>" style="font-size:0.75rem;">
-                                        <i class="bi bi-receipt me-1"></i><?= htmlspecialchars($bill['code']) ?>
-                                    </button>
-                                <?php endforeach; ?>
-                            </div>
-                        <?php else: ?>
-                            <span class="text-muted small">-</span>
-                        <?php endif; ?>
-                    </td>
-                    <td data-label="จำนวนเล่ม"><?= (int)$b['book_count'] ?></td>
-                    <td data-label="ต้นทุนรวม"><?= number_format((float)$b['total_cost'], 2) ?> ฿</td>
-                    <td data-label="ต้นทุน/เล่ม" class="text-muted"><?= $b['book_count'] > 0 ? number_format((float)$b['total_cost'] / $b['book_count'], 2) : '0.00' ?> ฿</td>
-                    <td data-label="" class="row-actions">
-                        <button type="button" class="btn btn-sm btn-outline-primary view-bundle-btn"
-                                data-id="<?= (int)$b['id'] ?>">
-                            <i class="bi bi-eye"></i> ดู
-                        </button>
-                        <a class="btn btn-sm btn-outline-danger"
-                           href="<?= BASE_URL ?>/index.php?url=stock/dissolveBundle/<?= (int)$b['id'] ?>"
-                           onclick="return confirm('ยืนยันยกเลิกชุดนี้และคืนเล่มเข้าสต็อก?');">
-                           <i class="bi bi-x-circle"></i> ยกเลิก
-                        </a>
-                    </td>
-                </tr>
-            <?php endforeach; ?>
-            <?php if (empty($bundles) && empty($bundleGroups)): ?>
-                <tr><td colspan="10" class="text-center text-muted py-4">ยังไม่มีชุดที่จัดไว้</td></tr>
-            <?php endif; ?>
+            <tbody id="availableBundlesTbody">
+                <tr><td colspan="10" class="text-center text-muted py-4"><span class="spinner-border spinner-border-sm text-primary me-2"></span> กำลังโหลดชุดที่พร้อมขาย...</td></tr>
             </tbody>
         </table>
     </div>
@@ -381,8 +210,7 @@
 </div>
 
 <script>
-const BASE_URL = "<?= BASE_URL ?>";
-const TITLES = <?= json_encode($titles, JSON_UNESCAPED_UNICODE) ?>;
+let TITLES = [];
 
 const itemsArea     = document.getElementById('itemsArea');
 const addItemBtn    = document.getElementById('addItemBtn');
@@ -530,7 +358,7 @@ async function onTitleChange(idx) {
         return;
     }
     try {
-        const res = await fetch(`${BASE_URL}/index.php?url=stock/getAvailableVolumes&title=${encodeURIComponent(title)}`);
+        const res = await fetch(`${BASE_URL}/stock/getAvailableVolumes?title=${encodeURIComponent(title)}`);
         const json = await res.json();
         if (!json.success) throw new Error(json.message);
         r.availableMap = json.data || {};
@@ -597,7 +425,7 @@ async function runRowPreview(idx) {
         return;
     }
     try {
-        const res = await fetch(`${BASE_URL}/index.php?url=stock/previewBundle&title=${encodeURIComponent(title)}&volume_start=${vs}&volume_end=${ve}`);
+        const res = await fetch(`${BASE_URL}/stock/previewBundle?title=${encodeURIComponent(title)}&volume_start=${vs}&volume_end=${ve}`);
         const json = await res.json();
         if (!json.success) throw new Error(json.message);
         const d = json.data;
@@ -632,7 +460,7 @@ async function runPreview() {
     let allOk = true;
     for (const r of rows) {
         try {
-            const res = await fetch(`${BASE_URL}/index.php?url=stock/previewBundle&title=${encodeURIComponent(r.title)}&volume_start=${r.vs}&volume_end=${r.ve}`);
+            const res = await fetch(`${BASE_URL}/stock/previewBundle?title=${encodeURIComponent(r.title)}&volume_start=${r.vs}&volume_end=${r.ve}`);
             const json = await res.json();
             if (!json.success) throw new Error(json.message);
             const d = json.data;
@@ -718,7 +546,11 @@ if (checkAll) {
         updateCombineBtn();
     });
 }
-document.querySelectorAll('.bundle-check').forEach(cb => cb.addEventListener('change', updateCombineBtn));
+document.addEventListener('change', (e) => {
+    if (e.target && e.target.classList.contains('bundle-check')) {
+        updateCombineBtn();
+    }
+});
 function updateCombineBtn() {
     const n = document.querySelectorAll('.bundle-check:checked').length;
     if (combineBtn) combineBtn.disabled = n < 2;
@@ -734,41 +566,233 @@ function ensureModal() {
     return bundleModal;
 }
 
-document.querySelectorAll('.view-bundle-btn').forEach(btn => {
-    btn.addEventListener('click', async () => {
-        const id = btn.dataset.id;
-        const modal = ensureModal();
-        if (!modal) { alert('Bootstrap ยังโหลดไม่เสร็จ กรุณาลองใหม่'); return; }
-        bundleModalBody.innerHTML = '<div class="text-center text-muted py-4">กำลังโหลด...</div>';
-        modal.show();
-        try {
-            const res = await fetch(`${BASE_URL}/index.php?url=stock/bundleDetail/${id}`);
-            const json = await res.json();
-            if (!json.success) throw new Error(json.message);
-            bundleModalBody.innerHTML = renderBundleHtml(json.data);
-        } catch (e) {
-            bundleModalBody.innerHTML = `<div class="alert alert-danger">${escapeHtml(e.message)}</div>`;
-        }
-    });
+document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.view-bundle-btn');
+    if (!btn) return;
+    const id = btn.dataset.id;
+    const modal = ensureModal();
+    if (!modal) { alert('Bootstrap ยังโหลดไม่เสร็จ กรุณาลองใหม่'); return; }
+    bundleModalBody.innerHTML = '<div class="text-center text-muted py-4">กำลังโหลด...</div>';
+    modal.show();
+    try {
+        const res = await fetch(`${BASE_URL}/stock/bundleDetail/${id}`);
+        const json = await res.json();
+        if (!json.success) throw new Error(json.message);
+        bundleModalBody.innerHTML = renderBundleHtml(json.data);
+    } catch (err) {
+        bundleModalBody.innerHTML = `<div class="alert alert-danger">${escapeHtml(err.message)}</div>`;
+    }
 });
 
-document.querySelectorAll('.view-group-btn').forEach(btn => {
-    btn.addEventListener('click', async () => {
-        const id = btn.dataset.id;
-        const modal = ensureModal();
-        if (!modal) { alert('Bootstrap ยังโหลดไม่เสร็จ กรุณาลองใหม่'); return; }
-        bundleModalBody.innerHTML = '<div class="text-center text-muted py-4">กำลังโหลด...</div>';
-        modal.show();
-        try {
-            const res = await fetch(`${BASE_URL}/index.php?url=stock/bundleGroupDetail/${id}`);
-            const json = await res.json();
-            if (!json.success) throw new Error(json.message);
-            bundleModalBody.innerHTML = renderGroupHtml(json.data);
-        } catch (e) {
-            bundleModalBody.innerHTML = `<div class="alert alert-danger">${escapeHtml(e.message)}</div>`;
-        }
-    });
+document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.view-group-btn');
+    if (!btn) return;
+    const id = btn.dataset.id;
+    const modal = ensureModal();
+    if (!modal) { alert('Bootstrap ยังโหลดไม่เสร็จ กรุณาลองใหม่'); return; }
+    bundleModalBody.innerHTML = '<div class="text-center text-muted py-4">กำลังโหลด...</div>';
+    modal.show();
+    try {
+        const res = await fetch(`${BASE_URL}/stock/bundleGroupDetail/${id}`);
+        const json = await res.json();
+        if (!json.success) throw new Error(json.message);
+        bundleModalBody.innerHTML = renderGroupHtml(json.data);
+    } catch (err) {
+        bundleModalBody.innerHTML = `<div class="alert alert-danger">${escapeHtml(err.message)}</div>`;
+    }
 });
+
+/* =================== AJAX Data Loading & Dynamic Rendering =================== */
+function renderCombineTable(bundles) {
+    const $tbody = $('#combineBundlesTbody');
+    const combineCard = document.getElementById('combineCard');
+    if (!bundles || bundles.length === 0) {
+        if (combineCard) combineCard.style.display = 'none';
+        $tbody.empty();
+        return;
+    }
+    if (combineCard) combineCard.style.display = '';
+
+    let html = '';
+    bundles.forEach(b => {
+        let bBills = [];
+        if (b.purchase_bills) {
+            b.purchase_bills.split('||').forEach(billStr => {
+                const parts = billStr.split(':');
+                if (parts.length >= 2) {
+                    bBills.push({ id: parts[0], code: parts.slice(1).join(':') });
+                }
+            });
+        }
+        let billsHtml = '<span class="text-muted small">-</span>';
+        if (bBills.length > 0) {
+            billsHtml = `<div class="d-flex flex-column gap-1 align-items-start">
+                ${bBills.map(bill => `
+                    <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 view-purchase-btn" data-id="${escapeAttr(bill.id)}" title="คลิกดูคำสั่งซื้อ ${escapeAttr(bill.code)}" style="font-size:0.75rem;">
+                        <i class="bi bi-receipt me-1"></i>${escapeHtml(bill.code)}
+                    </button>
+                `).join('')}
+            </div>`;
+        }
+        let coverHtml = b.cover_image 
+            ? `<img src="${BASE_URL}/${escapeAttr(b.cover_image)}" alt="cover" class="thumb-xs">` 
+            : '<span class="text-muted small">ไม่มีรูป</span>';
+
+        html += `
+            <tr>
+                <td data-label="เลือก"><input type="checkbox" class="bundle-check" name="bundle_ids[]" value="${escapeAttr(b.id)}"></td>
+                <td data-label="#">${escapeHtml(b.id)}</td>
+                <td data-label="รูป">${coverHtml}</td>
+                <td data-label="เรื่อง">${escapeHtml(b.title)}</td>
+                <td data-label="ช่วงเล่ม"><span class="badge bg-info text-dark">เล่ม ${escapeHtml(b.volume_start)} - ${escapeHtml(b.volume_end)}</span></td>
+                <td data-label="บิลซื้อเข้า">${billsHtml}</td>
+                <td data-label="จำนวนเล่ม">${Number(b.book_count).toLocaleString()}</td>
+                <td data-label="ต้นทุนรวม">${Number(b.total_cost).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} ฿</td>
+            </tr>
+        `;
+    });
+    $tbody.html(html);
+    updateCombineBtn();
+}
+
+function renderAvailableTable(bundles, bundleGroups) {
+    const $tbody = $('#availableBundlesTbody');
+    if ((!bundles || bundles.length === 0) && (!bundleGroups || bundleGroups.length === 0)) {
+        $tbody.html('<tr><td colspan="10" class="text-center text-muted py-4">ยังไม่มีชุดที่จัดไว้</td></tr>');
+        return;
+    }
+
+    let html = '';
+
+    // Render bundle groups
+    (bundleGroups || []).forEach(g => {
+        let gBills = [];
+        if (g.purchase_bills) {
+            g.purchase_bills.split('||').forEach(billStr => {
+                const parts = billStr.split(':');
+                if (parts.length >= 2) {
+                    gBills.push({ id: parts[0], code: parts.slice(1).join(':') });
+                }
+            });
+        }
+        let billsHtml = '<span class="text-muted small">-</span>';
+        if (gBills.length > 0) {
+            billsHtml = `<div class="d-flex flex-column gap-1 align-items-start">
+                ${gBills.map(bill => `
+                    <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 view-purchase-btn" data-id="${escapeAttr(bill.id)}" title="คลิกดูคำสั่งซื้อ ${escapeAttr(bill.code)}" style="font-size:0.75rem;">
+                        <i class="bi bi-receipt me-1"></i>${escapeHtml(bill.code)}
+                    </button>
+                `).join('')}
+            </div>`;
+        }
+        let coverHtml = g.cover_image 
+            ? `<img src="${BASE_URL}/${escapeAttr(g.cover_image)}" alt="cover" class="thumb-xs">` 
+            : '<span class="text-muted small">ไม่มีรูป</span>';
+
+        let labelHtml = g.label ? `<div class="fw-semibold text-primary mb-1">${escapeHtml(g.label)}</div>` : '';
+        let titleItemsHtml = '';
+        if (g.titles_summary) {
+            const tList = g.titles_summary.split('||');
+            titleItemsHtml = `<div class="d-flex flex-column gap-1">
+                ${tList.map(t => `<div class="fw-medium text-dark"><i class="bi bi-journal-bookmark me-1 text-primary"></i>${escapeHtml(t.trim())}</div>`).join('')}
+            </div>`;
+        }
+        const bCount = Number(g.book_count) || 0;
+        const tCost = Number(g.total_cost) || 0;
+        const avgCost = bCount > 0 ? (tCost / bCount).toFixed(2) : '0.00';
+
+        html += `
+            <tr>
+                <td data-label="#">#${escapeHtml(g.id)}</td>
+                <td data-label="ประเภท"><span class="badge bg-warning text-dark"><i class="bi bi-box2-heart"></i> กลุ่มรวม</span></td>
+                <td data-label="รูป">${coverHtml}</td>
+                <td data-label="เรื่อง">${labelHtml}${titleItemsHtml}</td>
+                <td data-label="ช่วงเล่ม"><span class="badge bg-info text-dark">รวมหลายเรื่อง</span></td>
+                <td data-label="บิลซื้อเข้า">${billsHtml}</td>
+                <td data-label="จำนวนเล่ม">${bCount.toLocaleString()}</td>
+                <td data-label="ต้นทุนรวม">${tCost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} ฿</td>
+                <td data-label="ต้นทุน/เล่ม" class="text-muted">${Number(avgCost).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} ฿</td>
+                <td data-label="" class="row-actions">
+                    <button type="button" class="btn btn-sm btn-outline-primary view-group-btn" data-id="${escapeAttr(g.id)}">
+                        <i class="bi bi-eye"></i> ดู
+                    </button>
+                    <a class="btn btn-sm btn-outline-danger" href="${BASE_URL}/stock/dissolveBundleGroup/${escapeAttr(g.id)}" onclick="return confirm('ยืนยันยกเลิกกลุ่ม #${escapeAttr(g.id)} และคืนเล่มทุกเรื่องเข้าสต็อก?');">
+                        <i class="bi bi-x-circle"></i> ยกเลิก
+                    </a>
+                </td>
+            </tr>
+        `;
+    });
+
+    // Render individual bundles
+    (bundles || []).forEach(b => {
+        let bBills = [];
+        if (b.purchase_bills) {
+            b.purchase_bills.split('||').forEach(billStr => {
+                const parts = billStr.split(':');
+                if (parts.length >= 2) {
+                    bBills.push({ id: parts[0], code: parts.slice(1).join(':') });
+                }
+            });
+        }
+        let billsHtml = '<span class="text-muted small">-</span>';
+        if (bBills.length > 0) {
+            billsHtml = `<div class="d-flex flex-column gap-1 align-items-start">
+                ${bBills.map(bill => `
+                    <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 view-purchase-btn" data-id="${escapeAttr(bill.id)}" title="คลิกดูคำสั่งซื้อ ${escapeAttr(bill.code)}" style="font-size:0.75rem;">
+                        <i class="bi bi-receipt me-1"></i>${escapeHtml(bill.code)}
+                    </button>
+                `).join('')}
+            </div>`;
+        }
+        let coverHtml = b.cover_image 
+            ? `<img src="${BASE_URL}/${escapeAttr(b.cover_image)}" alt="cover" class="thumb-xs">` 
+            : '<span class="text-muted small">ไม่มีรูป</span>';
+
+        const bCount = Number(b.book_count) || 0;
+        const tCost = Number(b.total_cost) || 0;
+        const avgCost = bCount > 0 ? (tCost / bCount).toFixed(2) : '0.00';
+
+        html += `
+            <tr>
+                <td data-label="#">${escapeHtml(b.id)}</td>
+                <td data-label="ประเภท"><span class="badge bg-secondary"><i class="bi bi-collection"></i> ชุดเดี่ยว</span></td>
+                <td data-label="รูป">${coverHtml}</td>
+                <td data-label="เรื่อง">${escapeHtml(b.title)}</td>
+                <td data-label="ช่วงเล่ม"><span class="badge bg-info text-dark">เล่ม ${escapeHtml(b.volume_start)} - ${escapeHtml(b.volume_end)}</span></td>
+                <td data-label="บิลซื้อเข้า">${billsHtml}</td>
+                <td data-label="จำนวนเล่ม">${bCount.toLocaleString()}</td>
+                <td data-label="ต้นทุนรวม">${tCost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} ฿</td>
+                <td data-label="ต้นทุน/เล่ม" class="text-muted">${Number(avgCost).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} ฿</td>
+                <td data-label="" class="row-actions">
+                    <button type="button" class="btn btn-sm btn-outline-primary view-bundle-btn" data-id="${escapeAttr(b.id)}">
+                        <i class="bi bi-eye"></i> ดู
+                    </button>
+                    <a class="btn btn-sm btn-outline-danger" href="${BASE_URL}/stock/dissolveBundle/${escapeAttr(b.id)}" onclick="return confirm('ยืนยันยกเลิกชุดนี้และคืนเล่มเข้าสต็อก?');">
+                        <i class="bi bi-x-circle"></i> ยกเลิก
+                    </a>
+                </td>
+            </tr>
+        `;
+    });
+
+    $tbody.html(html);
+}
+
+function loadBundleData() {
+    $('#combineBundlesTbody').html('<tr><td colspan="8" class="text-center text-muted py-3"><span class="spinner-border spinner-border-sm text-primary me-2"></span> กำลังโหลดชุดสำหรับรวมกลุ่ม...</td></tr>');
+    $('#availableBundlesTbody').html('<tr><td colspan="10" class="text-center text-muted py-4"><span class="spinner-border spinner-border-sm text-primary me-2"></span> กำลังโหลดชุดที่พร้อมขาย...</td></tr>');
+
+    $.getJSON(`${BASE_URL}/stock/bundleData`, function(res) {
+        if (!res.success) return;
+        TITLES = res.titles || [];
+        renderCombineTable(res.bundles || []);
+        renderAvailableTable(res.bundles || [], res.bundleGroups || []);
+    }).fail(function() {
+        $('#combineBundlesTbody').html('<tr><td colspan="8" class="text-center text-danger py-3">โหลดข้อมูลไม่สำเร็จ</td></tr>');
+        $('#availableBundlesTbody').html('<tr><td colspan="10" class="text-center text-danger py-4">โหลดข้อมูลไม่สำเร็จ</td></tr>');
+    });
+}
 
 function renderBundleHtml(d) {
     const b = d.bundle;
@@ -986,7 +1010,7 @@ document.addEventListener('click', async (e) => {
     `;
     modal.show();
     try {
-        const res = await fetch(`${BASE_URL}/index.php?url=purchase/detail/${id}`);
+        const res = await fetch(`${BASE_URL}/purchase/detail/${id}`);
         const json = await res.json();
         if (!json.success) throw new Error(json.message || 'โหลดข้อมูลไม่สำเร็จ');
         purchaseModalBody.innerHTML = renderPurchaseHtml(json.data);
@@ -998,6 +1022,12 @@ document.addEventListener('click', async (e) => {
 /* =================== Init =================== */
 addItemBtn.addEventListener('click', addRow);
 addRow(); // start with 1 row
+loadBundleData(); // fetch bundles and titles asynchronously
+
+const btnRefreshBundles = document.getElementById('btnRefreshBundles');
+if (btnRefreshBundles) {
+    btnRefreshBundles.addEventListener('click', loadBundleData);
+}
 
 // Preview รูปปกชุดที่เลือก
 const bundleCoverInput = document.querySelector('input[name="bundle_cover"]');

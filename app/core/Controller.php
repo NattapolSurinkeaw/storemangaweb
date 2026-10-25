@@ -52,13 +52,7 @@ abstract class Controller
 
     protected function redirect(string $url): void
     {
-        $url = ltrim($url, '/');
-        // ถ้าระบุ url ที่ยังไม่ได้ขึ้นต้นด้วย index.php ให้ redirect ไปที่ index.php?url=...
-        if (!str_starts_with($url, 'index.php') && !str_starts_with($url, 'http://') && !str_starts_with($url, 'https://')) {
-            $dest = BASE_URL . '/index.php?url=' . $url;
-        } else {
-            $dest = BASE_URL . '/' . $url;
-        }
+        $dest = url($url);
         header('Location: ' . $dest);
         exit;
     }
@@ -71,6 +65,23 @@ abstract class Controller
     protected function flash(string $type, string $message): void
     {
         $_SESSION['flash'][] = ['type' => $type, 'message' => $message];
+    }
+
+    protected function json(array $data, int $statusCode = 200): void
+    {
+        http_response_code($statusCode);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode($data, JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    protected function isAjax(): bool
+    {
+        return (
+            (($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'XMLHttpRequest')
+            || (($_GET['ajax'] ?? '') === '1')
+            || str_contains($_SERVER['HTTP_ACCEPT'] ?? '', 'application/json')
+        );
     }
 
     // ---------------------------------------------------------

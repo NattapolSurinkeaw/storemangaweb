@@ -29,6 +29,11 @@ class SalesController extends Controller
             return;
         }
 
+        if ($this->isAjax()) {
+            $this->data();
+            return;
+        }
+
         // โหมดแก้ไข: ?edit={id}
         $editId = (int) ($_GET['edit'] ?? 0);
         $editing = null;
@@ -41,13 +46,20 @@ class SalesController extends Controller
         }
 
         $this->view('sales/create', [
+            'shopeeFee'   => SHOPEE_FEE_PERCENT,
+            'facebookFee' => FACEBOOK_FEE_PERCENT,
+            'editing'     => $editing,
+        ]);
+    }
+
+    public function data(): void
+    {
+        $this->json([
+            'success'               => true,
             'availableBooks'        => $this->inventoryModel->getAvailableSingleBooks(),
             'availableBundles'      => $this->bundleModel->getAvailableBundles(),
             'availableBundleGroups' => $this->bundleModel->getAvailableBundleGroups(),
             'sales'                 => array_slice($this->salesModel->getAllSales(), 0, 20),
-            'shopeeFee'             => SHOPEE_FEE_PERCENT,
-            'facebookFee'           => FACEBOOK_FEE_PERCENT,
-            'editing'               => $editing,
         ]);
     }
 
@@ -200,8 +212,18 @@ class SalesController extends Controller
             return $bundle ? "{$bundle['title']} ชุดเล่ม {$bundle['volume_start']}-{$bundle['volume_end']}" : 'ไม่ทราบชื่อ';
         }
         if ($refType === 'bundle_group') {
+            $bundles = $this->bundleModel->getBundlesByGroupId($refId);
+            if (!empty($bundles)) {
+                $titles = array_map(function ($b) {
+                    $vol = ((int) $b['volume_start'] === (int) $b['volume_end'])
+                        ? "เล่ม {$b['volume_start']}"
+                        : "ชุดเล่ม {$b['volume_start']}-{$b['volume_end']}";
+                    return "{$b['title']} {$vol}";
+                }, $bundles);
+                return implode(', ', $titles);
+            }
             $grp = $this->bundleModel->getBundleGroupById($refId);
-            return $grp ? "[กลุ่มรวม] " . ($grp['label'] ?? 'กลุ่มขายรวม') . " ({$grp['bundle_count']} เรื่อง)" : 'ไม่ทราบชื่อ';
+            return ($grp && !empty($grp['label'])) ? $grp['label'] : 'ไม่ทราบชื่อ';
         }
         return 'ไม่ทราบชื่อ';
     }
