@@ -417,6 +417,7 @@ class ReportModel extends Model
                 ORDER BY s.sale_date DESC, s.id DESC";
 
         $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
         $rows = $stmt->fetchAll();
         foreach ($rows as &$r) {
             if ($r['ref_type'] === 'bundle_group' && !empty($r['bundle_group_titles'])) {
