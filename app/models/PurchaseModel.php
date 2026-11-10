@@ -279,19 +279,42 @@ class PurchaseModel extends Model
         }
     }
 
-    public function getAllPurchases(): array
+    public function getAllPurchases(?string $search = null): array
     {
-        $stmt = $this->db->query(
-            "SELECT p.*,
+        $sql = "SELECT p.*,
                     (SELECT COUNT(*) FROM inventory_books ib
                        JOIN purchase_item_volumes piv ON piv.id = ib.purchase_item_volume_id
                        JOIN purchase_items pi ON pi.id = piv.purchase_item_id
                       WHERE pi.purchase_id = p.id) AS book_count,
                     (SELECT COALESCE(SUM(item_price),0) FROM purchase_items WHERE purchase_id = p.id) AS items_total,
                     (SELECT COUNT(*) FROM purchase_images WHERE purchase_id = p.id) AS image_count,
-                    (SELECT image_path FROM purchase_images WHERE purchase_id = p.id ORDER BY id ASC LIMIT 1) AS first_image
-             FROM purchases p ORDER BY p.purchase_date DESC"
-        );
+                    (SELECT image_path FROM purchase_images WHERE purchase_id = p.id ORDER BY id ASC LIMIT 1) AS first_image,
+                    (SELECT GROUP_CONCAT(DISTINCT pi.title ORDER BY pi.id ASC SEPARATOR ', ') FROM purchase_items pi WHERE pi.purchase_id = p.id) AS manga_titles
+             FROM purchases p";
+
+        $params = [];
+        if ($search !== null && $search !== '') {
+            $sql .= " WHERE p.note LIKE :q1
+                         OR p.purchase_code LIKE :q2
+                         OR EXISTS (
+                             SELECT 1 FROM purchase_items pi2
+                             WHERE pi2.purchase_id = p.id AND pi2.title LIKE :q3
+                         )";
+            $pattern = '%' . $search . '%';
+            $params[':q1'] = $pattern;
+            $params[':q2'] = $pattern;
+            $params[':q3'] = $pattern;
+        }
+
+        $sql .= " ORDER BY p.purchase_date DESC, p.id DESC";
+
+        if (empty($params)) {
+            $stmt = $this->db->query($sql);
+        } else {
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute($params);
+        }
+
         return $stmt->fetchAll();
     }
 

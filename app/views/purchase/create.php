@@ -43,8 +43,8 @@
                        value="<?= !empty($editing) ? htmlspecialchars($editing['total_shipping_cost']) : '0' ?>" required>
             </div>
             <div class="col-md-4">
-                <label class="form-label">หมายเหตุ</label>
-                <input type="text" name="note" class="form-control" placeholder="เช่น ชื่อร้าน / เพจที่ซื้อ"
+                <label class="form-label">คนขาย / หมายเหตุ</label>
+                <input type="text" name="note" class="form-control" placeholder="เช่น ชื่อคนขาย / ร้าน / เพจที่ซื้อ"
                        value="<?= !empty($editing) ? htmlspecialchars($editing['note'] ?? '') : '' ?>">
             </div>
         </div>
@@ -122,15 +122,45 @@ const PURCHASE_PREFILL = <?= json_encode(!empty($editing) ? $editing['items'] : 
 <?php endif; ?>
 
 <div class="card p-4">
-    <div class="panel-title d-flex justify-content-between align-items-center">
-        <span><i class="bi bi-clock-history"></i> ประวัติบิลซื้อเข้า</span>
-        <button type="button" class="btn btn-sm btn-outline-secondary" id="btnRefreshPurchases"><i class="bi bi-arrow-clockwise"></i> รีเฟรช</button>
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+        <div class="panel-title mb-0">
+            <i class="bi bi-clock-history"></i> ประวัติบิลซื้อเข้า
+            <span class="badge bg-secondary ms-2" id="purchaseCountBadge" style="display: none;">0 บิล</span>
+        </div>
+        <div class="d-flex align-items-center gap-2 flex-grow-1 justify-content-end" style="max-width: 480px;">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-white border-end-0 text-muted">
+                    <i class="bi bi-search"></i>
+                </span>
+                <input type="text" id="purchaseSearchInput" class="form-control border-start-0 ps-0" placeholder="ค้นหาชื่อคนขาย, ชื่อมังงะ, รหัสบิล..." autocomplete="off">
+                <button class="btn btn-outline-secondary border-start-0" type="button" id="clearPurchaseSearchBtn" style="display: none;" title="ล้างการค้นหา">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-secondary text-nowrap" id="btnRefreshPurchases" title="รีเฟรช">
+                <i class="bi bi-arrow-clockwise"></i> รีเฟรช
+            </button>
+        </div>
     </div>
     <div class="table-responsive">
         <table class="table table-sm table-flex-mobile align-middle">
-            <thead><tr><th>#</th><th>รหัสบิล</th><th>วันที่</th><th>note</th><th>จำนวนเล่ม</th><th>ยอดซื้อ (ไม่รวมส่ง)</th><th>ค่าส่ง</th><th>ยอดรวม</th><th>รูปสลิป</th><th></th></tr></thead>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>รหัสบิล</th>
+                    <th>วันที่</th>
+                    <th>คนขาย / Note</th>
+                    <th>มังงะในบิล</th>
+                    <th>จำนวนเล่ม</th>
+                    <th>ยอดซื้อ (ไม่รวมส่ง)</th>
+                    <th>ค่าส่ง</th>
+                    <th>ยอดรวม</th>
+                    <th>รูปสลิป</th>
+                    <th></th>
+                </tr>
+            </thead>
             <tbody id="purchaseHistoryTbody">
-                <tr><td colspan="10" class="text-center text-muted py-4"><span class="spinner-border spinner-border-sm text-primary me-2"></span> กำลังโหลดประวัติบิลซื้อ...</td></tr>
+                <tr><td colspan="11" class="text-center text-muted py-4"><span class="spinner-border spinner-border-sm text-primary me-2"></span> กำลังโหลดประวัติบิลซื้อ...</td></tr>
             </tbody>
         </table>
     </div>
@@ -467,10 +497,31 @@ function renderPurchaseHtml(d) {
 
 const IS_ADMIN = <?= !empty($__isAdmin) ? 'true' : 'false' ?>;
 
-function renderPurchasesTable(purchases) {
+let allPurchases = [];
+
+function renderPurchasesTable(purchases, isFiltered = false) {
     const $tbody = $('#purchaseHistoryTbody');
+    const badge = document.getElementById('purchaseCountBadge');
+
+    if (badge) {
+        if (allPurchases.length > 0) {
+            badge.style.display = 'inline-block';
+            if (isFiltered) {
+                badge.textContent = `พบ ${purchases.length} จาก ${allPurchases.length} บิล`;
+            } else {
+                badge.textContent = `${allPurchases.length} บิล`;
+            }
+        } else {
+            badge.style.display = 'none';
+        }
+    }
+
     if (!purchases || purchases.length === 0) {
-        $tbody.html('<tr><td colspan="10" class="text-center text-muted py-4">ยังไม่มีบิลซื้อ</td></tr>');
+        if (isFiltered) {
+            $tbody.html('<tr><td colspan="11" class="text-center text-muted py-4"><i class="bi bi-search me-1"></i> ไม่พบบิลซื้อที่ตรงกับการค้นหา</td></tr>');
+        } else {
+            $tbody.html('<tr><td colspan="11" class="text-center text-muted py-4">ยังไม่มีบิลซื้อ</td></tr>');
+        }
         return;
     }
 
@@ -485,11 +536,11 @@ function renderPurchasesTable(purchases) {
 
         let imgHtml = '<span class="text-muted small">—</span>';
         if (p.first_image) {
-            let badge = imgCount > 1 ? `<span class="badge bg-secondary ms-1">+${imgCount - 1}</span>` : '';
+            let badgeHtml = imgCount > 1 ? `<span class="badge bg-secondary ms-1">+${imgCount - 1}</span>` : '';
             imgHtml = `
                 <a href="${BASE_URL}/${escapeAttr(p.first_image)}" target="_blank" title="ดูรูปสลิป">
                     <img src="${BASE_URL}/${escapeAttr(p.first_image)}" alt="slip" style="width:54px;height:54px;object-fit:cover;border:1px solid #ddd;border-radius:6px;">
-                </a>${badge}
+                </a>${badgeHtml}
             `;
         }
 
@@ -508,12 +559,26 @@ function renderPurchasesTable(purchases) {
             `;
         }
 
+        let mangaHtml = '<span class="text-muted small">—</span>';
+        if (p.manga_titles) {
+            const titles = p.manga_titles.split(', ');
+            mangaHtml = `<div class="d-flex flex-wrap gap-1" style="max-width: 250px;">` +
+                titles.map(t => `<span class="badge bg-light text-dark border">${escapeHtml(t)}</span>`).join('') +
+                `</div>`;
+        }
+
+        let noteHtml = '<span class="text-muted small">—</span>';
+        if (p.note) {
+            noteHtml = `<span class="fw-semibold text-dark">${escapeHtml(p.note)}</span>`;
+        }
+
         html += `
             <tr>
                 <td data-label="#">${id}</td>
                 <td data-label="รหัสบิล">${escapeHtml(p.purchase_code || '')}</td>
                 <td data-label="วันที่">${escapeHtml(p.purchase_date || '')}</td>
-                <td data-label="note">${escapeHtml(p.note || '')}</td>
+                <td data-label="คนขาย / Note">${noteHtml}</td>
+                <td data-label="มังงะในบิล">${mangaHtml}</td>
                 <td data-label="จำนวนเล่ม">${bookCount.toLocaleString()}</td>
                 <td data-label="ยอดซื้อ (ไม่รวมส่ง)">${itemsTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} ฿</td>
                 <td data-label="ค่าส่ง">${shipping.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} ฿</td>
@@ -532,16 +597,42 @@ function renderPurchasesTable(purchases) {
     $tbody.html(html);
 }
 
+function applyPurchaseFilter() {
+    const searchInput = document.getElementById('purchaseSearchInput');
+    const clearBtn = document.getElementById('clearPurchaseSearchBtn');
+    const q = (searchInput ? searchInput.value : '').trim().toLowerCase();
+
+    if (clearBtn) {
+        clearBtn.style.display = q !== '' ? 'inline-block' : 'none';
+    }
+
+    if (!q) {
+        renderPurchasesTable(allPurchases, false);
+        return;
+    }
+
+    const filtered = allPurchases.filter(p => {
+        const code = String(p.purchase_code || '').toLowerCase();
+        const note = String(p.note || '').toLowerCase();
+        const manga = String(p.manga_titles || '').toLowerCase();
+        const id = String(p.id || '');
+        return code.includes(q) || note.includes(q) || manga.includes(q) || id.includes(q);
+    });
+
+    renderPurchasesTable(filtered, true);
+}
+
 function loadPurchasesList() {
-    $('#purchaseHistoryTbody').html('<tr><td colspan="10" class="text-center text-muted py-4"><span class="spinner-border spinner-border-sm text-primary me-2"></span> กำลังโหลดประวัติบิลซื้อ...</td></tr>');
+    $('#purchaseHistoryTbody').html('<tr><td colspan="11" class="text-center text-muted py-4"><span class="spinner-border spinner-border-sm text-primary me-2"></span> กำลังโหลดประวัติบิลซื้อ...</td></tr>');
     $.getJSON(`${BASE_URL}/purchase/list`, function(res) {
         if (res && res.success) {
-            renderPurchasesTable(res.purchases || []);
+            allPurchases = res.purchases || [];
+            applyPurchaseFilter();
         } else {
-            $('#purchaseHistoryTbody').html('<tr><td colspan="10" class="text-center text-danger py-4">โหลดข้อมูลไม่สำเร็จ</td></tr>');
+            $('#purchaseHistoryTbody').html('<tr><td colspan="11" class="text-center text-danger py-4">โหลดข้อมูลไม่สำเร็จ</td></tr>');
         }
     }).fail(function() {
-        $('#purchaseHistoryTbody').html('<tr><td colspan="10" class="text-center text-danger py-4">เกิดข้อผิดพลาดในการโหลดข้อมูล</td></tr>');
+        $('#purchaseHistoryTbody').html('<tr><td colspan="11" class="text-center text-danger py-4">เกิดข้อผิดพลาดในการโหลดข้อมูล</td></tr>');
     });
 }
 
@@ -607,6 +698,30 @@ document.addEventListener('click', async (e) => {
         btn.innerHTML = originalHtml;
     }
 });
+
+// Setup search listeners
+const purchaseSearchInput = document.getElementById('purchaseSearchInput');
+if (purchaseSearchInput) {
+    purchaseSearchInput.addEventListener('input', applyPurchaseFilter);
+
+    // Read ?search= or ?q= from URL if present
+    const urlParams = new URLSearchParams(window.location.search);
+    const searchParam = urlParams.get('search') || urlParams.get('q');
+    if (searchParam) {
+        purchaseSearchInput.value = searchParam;
+    }
+}
+
+const clearPurchaseSearchBtn = document.getElementById('clearPurchaseSearchBtn');
+if (clearPurchaseSearchBtn) {
+    clearPurchaseSearchBtn.addEventListener('click', () => {
+        if (purchaseSearchInput) {
+            purchaseSearchInput.value = '';
+            applyPurchaseFilter();
+            purchaseSearchInput.focus();
+        }
+    });
+}
 
 // Load purchases list on page load
 loadPurchasesList();

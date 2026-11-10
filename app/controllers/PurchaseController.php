@@ -72,7 +72,7 @@ class PurchaseController extends Controller
     {
         $this->json([
             'success'   => true,
-            'purchases' => $this->purchaseModel->getAllPurchases(),
+            'purchases' => $this->purchaseModel->getAllPurchases(trim((string) ($_GET['search'] ?? $_GET['q'] ?? '')) !== '' ? trim((string) ($_GET['search'] ?? $_GET['q'] ?? '')) : null),
         ]);
     }
 
