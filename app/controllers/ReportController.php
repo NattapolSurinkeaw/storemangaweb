@@ -29,6 +29,7 @@ class ReportController extends Controller
         $preset = $this->input('preset', 'all');
         $groupBy = $this->input('group_by', 'month');
         $channel = $this->input('channel', 'all');
+        $search  = trim($this->input('search', ''));
 
         $startDate = $this->input('start_date', '');
         $endDate   = $this->input('end_date', '');
@@ -55,6 +56,7 @@ class ReportController extends Controller
             'preset'    => $preset,
             'groupBy'   => $groupBy,
             'channel'   => $channel,
+            'search'    => $search,
             'startDate' => $startDate,
             'endDate'   => $endDate,
         ]);
@@ -65,6 +67,7 @@ class ReportController extends Controller
         $preset = $this->input('preset', 'all');
         $groupBy = $this->input('group_by', 'month');
         $channel = $this->input('channel', 'all');
+        $search  = trim($this->input('search', ''));
 
         $startDate = $this->input('start_date', '');
         $endDate   = $this->input('end_date', '');
@@ -90,16 +93,17 @@ class ReportController extends Controller
             $groupBy = 'month';
         }
 
-        $summary   = $this->reportModel->getSummaryMetrics($startDate ?: null, $endDate ?: null, $channel);
-        $timeline  = $this->reportModel->getTimelineComparison($startDate ?: null, $endDate ?: null, $groupBy, $channel);
-        $purchases = $this->reportModel->getPurchasesList($startDate ?: null, $endDate ?: null);
-        $sales     = $this->reportModel->getSalesList($startDate ?: null, $endDate ?: null, $channel);
+        $summary   = $this->reportModel->getSummaryMetrics($startDate ?: null, $endDate ?: null, $channel, $search ?: null);
+        $timeline  = $this->reportModel->getTimelineComparison($startDate ?: null, $endDate ?: null, $groupBy, $channel, $search ?: null);
+        $purchases = $this->reportModel->getPurchasesList($startDate ?: null, $endDate ?: null, $search ?: null);
+        $sales     = $this->reportModel->getSalesList($startDate ?: null, $endDate ?: null, $channel, $search ?: null);
 
         $this->json([
             'success'   => true,
             'preset'    => $preset,
             'groupBy'   => $groupBy,
             'channel'   => $channel,
+            'search'    => $search,
             'startDate' => $startDate,
             'endDate'   => $endDate,
             'summary'   => $summary,
@@ -119,6 +123,7 @@ class ReportController extends Controller
         $endDate   = $this->input('end_date', '') ?: null;
         $groupBy   = $this->input('group_by', 'month');
         $channel   = $this->input('channel', 'all');
+        $search    = trim($this->input('search', '')) ?: null;
 
         $filename = 'manga-report-' . $type . '-' . date('Ymd_His') . '.csv';
 
@@ -133,7 +138,7 @@ class ReportController extends Controller
 
         if ($type === 'purchases') {
             fputcsv($out, ['วันที่ซื้อ', 'เลขที่บิล', 'รายการเรื่อง', 'จำนวนเล่ม', 'ค่าส่ง (฿)', 'ยอดซื้อรวม (฿)', 'หมายเหตุ']);
-            $list = $this->reportModel->getPurchasesList($startDate, $endDate);
+            $list = $this->reportModel->getPurchasesList($startDate, $endDate, $search);
             foreach ($list as $p) {
                 fputcsv($out, [
                     $p['purchase_date'],
@@ -147,7 +152,7 @@ class ReportController extends Controller
             }
         } elseif ($type === 'sales') {
             fputcsv($out, ['วันที่ขาย', 'รายการสินค้า', 'ช่องทาง', 'ราคาขาย (฿)', 'ค่าธรรมเนียม (฿)', 'รายรับสุทธิ (฿)', 'ต้นทุน (฿)', 'กำไรสุทธิ (฿)', '% กำไร']);
-            $list = $this->reportModel->getSalesList($startDate, $endDate, $channel);
+            $list = $this->reportModel->getSalesList($startDate, $endDate, $channel, $search);
             foreach ($list as $s) {
                 fputcsv($out, [
                     $s['sale_date'],
@@ -164,7 +169,7 @@ class ReportController extends Controller
         } else {
             // summary timeline
             fputcsv($out, ['ช่วงเวลา', 'ยอดซื้อเข้า (฿)', 'บิลซื้อ', 'เล่มที่ซื้อ', 'ยอดขายออก (฿)', 'รายการขาย', 'เล่มที่ขาย', 'ค่าธรรมเนียม (฿)', 'ต้นทุนขาย (฿)', 'กำไรสุทธิ (฿)', '% กำไร', 'กระแสเงินสดสุทธิ (฿)']);
-            $timeline = $this->reportModel->getTimelineComparison($startDate, $endDate, $groupBy, $channel);
+            $timeline = $this->reportModel->getTimelineComparison($startDate, $endDate, $groupBy, $channel, $search);
             foreach ($timeline as $t) {
                 fputcsv($out, [
                     $t['label'],

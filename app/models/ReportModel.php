@@ -39,7 +39,7 @@ class ReportModel extends Model
     /**
      * ดึงภาพรวมสถิติสรุป (KPI Metrics) ตามช่วงเวลา
      */
-    public function getSummaryMetrics(?string $startDate = null, ?string $endDate = null, string $channel = 'all'): array
+    public function getSummaryMetrics(?string $startDate = null, ?string $endDate = null, string $channel = 'all', ?string $search = null): array
     {
         // 1. ซื้อเข้า
         $pWhere = [];
@@ -51,6 +51,11 @@ class ReportModel extends Model
         if (!empty($endDate)) {
             $pWhere[] = "p.purchase_date <= :p_end";
             $pParams[':p_end'] = $endDate;
+        }
+        if (!empty($search)) {
+            $pWhere[] = "(p.purchase_code LIKE :p_search1 OR EXISTS (SELECT 1 FROM purchase_items pi_s WHERE pi_s.purchase_id = p.id AND pi_s.title LIKE :p_search2))";
+            $pParams[':p_search1'] = '%' . $search . '%';
+            $pParams[':p_search2'] = '%' . $search . '%';
         }
         $pWhereSql = !empty($pWhere) ? 'WHERE ' . implode(' AND ', $pWhere) : '';
 
@@ -86,6 +91,25 @@ class ReportModel extends Model
         if ($channel !== 'all' && in_array($channel, ['shopee', 'facebook'], true)) {
             $sWhere[] = "s.channel = :s_channel";
             $sParams[':s_channel'] = $channel;
+        }
+        if (!empty($search)) {
+            $sWhere[] = "(s.title_snapshot LIKE :s_search1 
+                OR EXISTS (SELECT 1 FROM bundles b_s WHERE b_s.group_id = s.ref_id AND s.ref_type = 'bundle_group' AND b_s.title LIKE :s_search2)
+                OR EXISTS (
+                    SELECT 1 FROM inventory_books ib_p 
+                    JOIN purchase_item_volumes piv_p ON piv_p.id = ib_p.purchase_item_volume_id 
+                    JOIN purchase_items pi_p ON pi_p.id = piv_p.purchase_item_id 
+                    JOIN purchases p_p ON p_p.id = pi_p.purchase_id 
+                    WHERE p_p.purchase_code LIKE :s_search3 
+                      AND (
+                        (s.ref_type = 'book' AND ib_p.id = s.ref_id)
+                        OR (s.ref_type = 'bundle' AND ib_p.bundle_id = s.ref_id)
+                        OR (s.ref_type = 'bundle_group' AND EXISTS (SELECT 1 FROM bundles b_bg WHERE b_bg.group_id = s.ref_id AND ib_p.bundle_id = b_bg.id))
+                      )
+                ))";
+            $sParams[':s_search1'] = '%' . $search . '%';
+            $sParams[':s_search2'] = '%' . $search . '%';
+            $sParams[':s_search3'] = '%' . $search . '%';
         }
         $sWhereSql = !empty($sWhere) ? 'WHERE ' . implode(' AND ', $sWhere) : '';
 
@@ -162,7 +186,7 @@ class ReportModel extends Model
      * ดึงข้อมูลเปรียบเทียบตามช่วงเวลา (สำหรับสร้างกราฟแท่งและตารางสรุป)
      * $groupBy: 'month' | 'day' | 'year'
      */
-    public function getTimelineComparison(?string $startDate = null, ?string $endDate = null, string $groupBy = 'month', string $channel = 'all'): array
+    public function getTimelineComparison(?string $startDate = null, ?string $endDate = null, string $groupBy = 'month', string $channel = 'all', ?string $search = null): array
     {
         $dateFormat = match ($groupBy) {
             'day'   => '%Y-%m-%d',
@@ -180,6 +204,11 @@ class ReportModel extends Model
         if (!empty($endDate)) {
             $pWhere[] = "p.purchase_date <= :p_end";
             $pParams[':p_end'] = $endDate;
+        }
+        if (!empty($search)) {
+            $pWhere[] = "(p.purchase_code LIKE :p_search1 OR EXISTS (SELECT 1 FROM purchase_items pi_s WHERE pi_s.purchase_id = p.id AND pi_s.title LIKE :p_search2))";
+            $pParams[':p_search1'] = '%' . $search . '%';
+            $pParams[':p_search2'] = '%' . $search . '%';
         }
         $pWhereSql = !empty($pWhere) ? 'WHERE ' . implode(' AND ', $pWhere) : '';
 
@@ -218,6 +247,25 @@ class ReportModel extends Model
         if ($channel !== 'all' && in_array($channel, ['shopee', 'facebook'], true)) {
             $sWhere[] = "s.channel = :s_channel";
             $sParams[':s_channel'] = $channel;
+        }
+        if (!empty($search)) {
+            $sWhere[] = "(s.title_snapshot LIKE :s_search1 
+                OR EXISTS (SELECT 1 FROM bundles b_s WHERE b_s.group_id = s.ref_id AND s.ref_type = 'bundle_group' AND b_s.title LIKE :s_search2)
+                OR EXISTS (
+                    SELECT 1 FROM inventory_books ib_p 
+                    JOIN purchase_item_volumes piv_p ON piv_p.id = ib_p.purchase_item_volume_id 
+                    JOIN purchase_items pi_p ON pi_p.id = piv_p.purchase_item_id 
+                    JOIN purchases p_p ON p_p.id = pi_p.purchase_id 
+                    WHERE p_p.purchase_code LIKE :s_search3 
+                      AND (
+                        (s.ref_type = 'book' AND ib_p.id = s.ref_id)
+                        OR (s.ref_type = 'bundle' AND ib_p.bundle_id = s.ref_id)
+                        OR (s.ref_type = 'bundle_group' AND EXISTS (SELECT 1 FROM bundles b_bg WHERE b_bg.group_id = s.ref_id AND ib_p.bundle_id = b_bg.id))
+                      )
+                ))";
+            $sParams[':s_search1'] = '%' . $search . '%';
+            $sParams[':s_search2'] = '%' . $search . '%';
+            $sParams[':s_search3'] = '%' . $search . '%';
         }
         $sWhereSql = !empty($sWhere) ? 'WHERE ' . implode(' AND ', $sWhere) : '';
 
@@ -304,7 +352,7 @@ class ReportModel extends Model
     /**
      * ดึงรายการบิลซื้อเข้าทั้งหมดตามช่วงเวลา
      */
-    public function getPurchasesList(?string $startDate = null, ?string $endDate = null): array
+    public function getPurchasesList(?string $startDate = null, ?string $endDate = null, ?string $search = null): array
     {
         $where = [];
         $params = [];
@@ -315,6 +363,11 @@ class ReportModel extends Model
         if (!empty($endDate)) {
             $where[] = "p.purchase_date <= :p_end";
             $params[':p_end'] = $endDate;
+        }
+        if (!empty($search)) {
+            $where[] = "(p.purchase_code LIKE :p_search1 OR EXISTS (SELECT 1 FROM purchase_items pi_s WHERE pi_s.purchase_id = p.id AND pi_s.title LIKE :p_search2))";
+            $params[':p_search1'] = '%' . $search . '%';
+            $params[':p_search2'] = '%' . $search . '%';
         }
         $whereSql = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
 
@@ -342,7 +395,7 @@ class ReportModel extends Model
     /**
      * ดึงรายการขายออกทั้งหมดตามช่วงเวลา
      */
-    public function getSalesList(?string $startDate = null, ?string $endDate = null, string $channel = 'all'): array
+    public function getSalesList(?string $startDate = null, ?string $endDate = null, string $channel = 'all', ?string $search = null): array
     {
         $where = [];
         $params = [];
@@ -357,6 +410,25 @@ class ReportModel extends Model
         if ($channel !== 'all' && in_array($channel, ['shopee', 'facebook'], true)) {
             $where[] = "s.channel = :s_channel";
             $params[':s_channel'] = $channel;
+        }
+        if (!empty($search)) {
+            $where[] = "(s.title_snapshot LIKE :s_search1 
+                OR EXISTS (SELECT 1 FROM bundles b_s WHERE b_s.group_id = s.ref_id AND s.ref_type = 'bundle_group' AND b_s.title LIKE :s_search2)
+                OR EXISTS (
+                    SELECT 1 FROM inventory_books ib_p 
+                    JOIN purchase_item_volumes piv_p ON piv_p.id = ib_p.purchase_item_volume_id 
+                    JOIN purchase_items pi_p ON pi_p.id = piv_p.purchase_item_id 
+                    JOIN purchases p_p ON p_p.id = pi_p.purchase_id 
+                    WHERE p_p.purchase_code LIKE :s_search3 
+                      AND (
+                        (s.ref_type = 'book' AND ib_p.id = s.ref_id)
+                        OR (s.ref_type = 'bundle' AND ib_p.bundle_id = s.ref_id)
+                        OR (s.ref_type = 'bundle_group' AND EXISTS (SELECT 1 FROM bundles b_bg WHERE b_bg.group_id = s.ref_id AND ib_p.bundle_id = b_bg.id))
+                      )
+                ))";
+            $params[':s_search1'] = '%' . $search . '%';
+            $params[':s_search2'] = '%' . $search . '%';
+            $params[':s_search3'] = '%' . $search . '%';
         }
         $whereSql = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
 

@@ -31,17 +31,17 @@
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end shadow-sm">
                     <li>
-                        <a class="dropdown-item py-2" id="exportSummaryLink" href="<?= url('report/export', ['type' => 'summary', 'start_date' => $startDate, 'end_date' => $endDate, 'group_by' => $groupBy, 'channel' => $channel]) ?>">
+                        <a class="dropdown-item py-2" id="exportSummaryLink" href="<?= url('report/export', ['type' => 'summary', 'start_date' => $startDate, 'end_date' => $endDate, 'group_by' => $groupBy, 'channel' => $channel, 'search' => $search ?? '']) ?>">
                             <i class="bi bi-file-earmark-spreadsheet me-2 text-primary"></i>สรุปเปรียบเทียบตามช่วงเวลา
                         </a>
                     </li>
                     <li>
-                        <a class="dropdown-item py-2" id="exportPurchasesLink" href="<?= url('report/export', ['type' => 'purchases', 'start_date' => $startDate, 'end_date' => $endDate]) ?>">
+                        <a class="dropdown-item py-2" id="exportPurchasesLink" href="<?= url('report/export', ['type' => 'purchases', 'start_date' => $startDate, 'end_date' => $endDate, 'search' => $search ?? '']) ?>">
                             <i class="bi bi-bag-check me-2 text-info"></i>รายการซื้อเข้า
                         </a>
                     </li>
                     <li>
-                        <a class="dropdown-item py-2" id="exportSalesLink" href="<?= url('report/export', ['type' => 'sales', 'start_date' => $startDate, 'end_date' => $endDate, 'channel' => $channel]) ?>">
+                        <a class="dropdown-item py-2" id="exportSalesLink" href="<?= url('report/export', ['type' => 'sales', 'start_date' => $startDate, 'end_date' => $endDate, 'channel' => $channel, 'search' => $search ?? '']) ?>">
                             <i class="bi bi-cash-coin me-2 text-success"></i>รายการขายออก
                         </a>
                     </li>
@@ -69,7 +69,7 @@
                         </div>
                     </div>
 
-                    <?php if (!empty($startDate) || !empty($endDate) || $channel !== 'all' || $groupBy !== 'month'): ?>
+                    <?php if (!empty($startDate) || !empty($endDate) || $channel !== 'all' || $groupBy !== 'month' || !empty($search)): ?>
                         <a href="<?= url('report') ?>" class="btn btn-link btn-sm text-decoration-none text-muted p-0">
                             <i class="bi bi-arrow-counterclockwise me-1"></i>ล้างตัวกรอง
                         </a>
@@ -78,12 +78,23 @@
 
                 <!-- Inputs row -->
                 <div class="row g-2 align-items-end">
-                    <div class="col-6 col-md-3">
+                    <div class="col-12 col-md-3">
+                        <label class="form-label small text-muted mb-1"><i class="bi bi-search me-1"></i>ค้นหาชื่อเรื่อง</label>
+                        <div class="input-group input-group-sm">
+                            <input type="text" name="search" id="inputSearch" class="form-control"
+                                   placeholder="พิมพ์ชื่อเรื่องมังงะ..." value="<?= htmlspecialchars($search ?? '') ?>" autocomplete="off">
+                            <button class="btn btn-outline-secondary" type="button" id="clearSearchBtn"
+                                    style="display: <?= !empty($search) ? 'inline-block' : 'none' ?>;" title="ล้างการค้นหา" onclick="clearGlobalSearch()">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-2">
                         <label class="form-label small text-muted mb-1">จากวันที่</label>
                         <input type="date" name="start_date" id="inputStartDate" class="form-control form-control-sm"
                                value="<?= htmlspecialchars($startDate) ?>" onchange="onDateChanged()">
                     </div>
-                    <div class="col-6 col-md-3">
+                    <div class="col-6 col-md-2">
                         <label class="form-label small text-muted mb-1">ถึงวันที่</label>
                         <input type="date" name="end_date" id="inputEndDate" class="form-control form-control-sm"
                                value="<?= htmlspecialchars($endDate) ?>" onchange="onDateChanged()">
@@ -104,9 +115,10 @@
                             <option value="facebook" <?= $channel === 'facebook' ? 'selected' : '' ?>>Facebook</option>
                         </select>
                     </div>
-                    <div class="col-12 col-md-2 d-grid">
-                        <button type="submit" class="btn btn-primary btn-sm">
-                            <i class="bi bi-funnel-fill me-1"></i>กรองข้อมูล
+                    <div class="col-12 col-md-1 d-grid">
+                        <button type="submit" class="btn btn-primary btn-sm" title="กรองข้อมูล">
+                            <i class="bi bi-funnel-fill"></i>
+                            <span class="d-md-none ms-1">กรอง</span>
                         </button>
                     </div>
                 </div>
@@ -296,11 +308,24 @@
 
                 <!-- TAB 2: รายการซื้อเข้า -->
                 <div class="tab-pane fade p-3 p-md-4" id="tab-purchases" role="tabpanel">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h6 class="fw-bold mb-0 text-dark">
-                            <i class="bi bi-bag-check me-1 text-info"></i>รายการบิลซื้อเข้า
-                        </h6>
-                        <span class="text-muted small" id="purchasesCountText">กำลังโหลด...</span>
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                        <div class="d-flex align-items-center gap-2">
+                            <h6 class="fw-bold mb-0 text-dark">
+                                <i class="bi bi-bag-check me-1 text-info"></i>รายการบิลซื้อเข้า
+                            </h6>
+                            <span class="text-muted small" id="purchasesCountText">กำลังโหลด...</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2" style="max-width: 280px; width: 100%;">
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-white border-end-0 text-muted">
+                                    <i class="bi bi-search"></i>
+                                </span>
+                                <input type="text" id="purchasesTabSearchInput" class="form-control border-start-0 ps-0" placeholder="ค้นหาชื่อเรื่อง / รหัสบิล..." autocomplete="off">
+                                <button class="btn btn-outline-secondary border-start-0" type="button" id="clearPurchasesTabSearchBtn" style="display: none;" title="ล้างการค้นหา">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="table-responsive">
@@ -325,11 +350,24 @@
 
                 <!-- TAB 3: รายการขายออก -->
                 <div class="tab-pane fade p-3 p-md-4" id="tab-sales" role="tabpanel">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h6 class="fw-bold mb-0 text-dark">
-                            <i class="bi bi-cash-coin me-1 text-success"></i>รายการขายออก
-                        </h6>
-                        <span class="text-muted small" id="salesCountText">กำลังโหลด...</span>
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                        <div class="d-flex align-items-center gap-2">
+                            <h6 class="fw-bold mb-0 text-dark">
+                                <i class="bi bi-cash-coin me-1 text-success"></i>รายการขายออก
+                            </h6>
+                            <span class="text-muted small" id="salesCountText">กำลังโหลด...</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2" style="max-width: 280px; width: 100%;">
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-white border-end-0 text-muted">
+                                    <i class="bi bi-search"></i>
+                                </span>
+                                <input type="text" id="salesTabSearchInput" class="form-control border-start-0 ps-0" placeholder="ค้นหาชื่อเรื่องในรายการขาย..." autocomplete="off">
+                                <button class="btn btn-outline-secondary border-start-0" type="button" id="clearSalesTabSearchBtn" style="display: none;" title="ล้างการค้นหา">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="table-responsive">
@@ -962,19 +1000,41 @@ function renderTimelineTable(timeline, summary) {
     }
 }
 
-function renderPurchasesReportTable(purchases) {
-    const count = (purchases || []).length;
-    $('#tab-purchases-count').text(count);
-    $('#purchasesCountText').text(`ทั้งหมด ${count} บิล`);
+let currentSalesList = [];
+let currentPurchasesList = [];
+
+function filterAndRenderPurchasesTable() {
+    const q = ($('#purchasesTabSearchInput').val() || '').trim().toLowerCase();
+    $('#clearPurchasesTabSearchBtn').toggle(q.length > 0);
+
+    const filtered = currentPurchasesList.filter(p => {
+        if (!q) return true;
+        const titles = (p.item_titles || '').toLowerCase();
+        const code = (p.purchase_code || '').toLowerCase();
+        const note = (p.note || '').toLowerCase();
+        const date = (p.purchase_date || '').toLowerCase();
+        return titles.includes(q) || code.includes(q) || note.includes(q) || date.includes(q);
+    });
+
+    $('#tab-purchases-count').text(filtered.length);
+    if (q) {
+        $('#purchasesCountText').text(`พบ ${filtered.length} จาก ${currentPurchasesList.length} บิล`);
+    } else {
+        $('#purchasesCountText').text(`ทั้งหมด ${currentPurchasesList.length} บิล`);
+    }
 
     const $tbody = $('#purchasesTbody');
-    if (!purchases || purchases.length === 0) {
-        $tbody.html('<tr><td colspan="7" class="text-center py-4 text-muted">ไม่มีรายการซื้อเข้าในช่วงเวลานี้</td></tr>');
+    if (filtered.length === 0) {
+        if (currentPurchasesList.length === 0) {
+            $tbody.html('<tr><td colspan="7" class="text-center py-4 text-muted">ไม่มีรายการซื้อเข้าในช่วงเวลานี้</td></tr>');
+        } else {
+            $tbody.html(`<tr><td colspan="7" class="text-center py-4 text-muted"><i class="bi bi-search me-1"></i>ไม่พบรายการซื้อเข้าที่ตรงกับ &ldquo;${escapeHtml(q)}&rdquo;</td></tr>`);
+        }
         return;
     }
 
     let html = '';
-    purchases.forEach(p => {
+    filtered.forEach(p => {
         html += `
             <tr>
                 <td class="text-nowrap">${escapeHtml(p.purchase_date)}</td>
@@ -1003,19 +1063,43 @@ function renderPurchasesReportTable(purchases) {
     $tbody.html(html);
 }
 
-function renderSalesReportTable(sales) {
-    const count = (sales || []).length;
-    $('#tab-sales-count').text(count);
-    $('#salesCountText').text(`ทั้งหมด ${count} รายการ`);
+function renderPurchasesReportTable(purchases) {
+    currentPurchasesList = purchases || [];
+    filterAndRenderPurchasesTable();
+}
+
+function filterAndRenderSalesTable() {
+    const q = ($('#salesTabSearchInput').val() || '').trim().toLowerCase();
+    $('#clearSalesTabSearchBtn').toggle(q.length > 0);
+
+    const filtered = currentSalesList.filter(s => {
+        if (!q) return true;
+        const title = (s.title_snapshot || '').toLowerCase();
+        const bills = (s.purchase_bills || '').toLowerCase();
+        const channel = (s.channel || '').toLowerCase();
+        const date = (s.sale_date || '').toLowerCase();
+        return title.includes(q) || bills.includes(q) || channel.includes(q) || date.includes(q);
+    });
+
+    $('#tab-sales-count').text(filtered.length);
+    if (q) {
+        $('#salesCountText').text(`พบ ${filtered.length} จาก ${currentSalesList.length} รายการ`);
+    } else {
+        $('#salesCountText').text(`ทั้งหมด ${currentSalesList.length} รายการ`);
+    }
 
     const $tbody = $('#salesTbody');
-    if (!sales || sales.length === 0) {
-        $tbody.html('<tr><td colspan="9" class="text-center py-4 text-muted">ไม่มีรายการขายออกในช่วงเวลานี้</td></tr>');
+    if (filtered.length === 0) {
+        if (currentSalesList.length === 0) {
+            $tbody.html('<tr><td colspan="9" class="text-center py-4 text-muted">ไม่มีรายการขายออกในช่วงเวลานี้</td></tr>');
+        } else {
+            $tbody.html(`<tr><td colspan="9" class="text-center py-4 text-muted"><i class="bi bi-search me-1"></i>ไม่พบรายการขายที่ตรงกับ &ldquo;${escapeHtml(q)}&rdquo;</td></tr>`);
+        }
         return;
     }
 
     let html = '';
-    sales.forEach(s => {
+    filtered.forEach(s => {
         let sBills = [];
         if (s.purchase_bills) {
             s.purchase_bills.split('||').forEach(billStr => {
@@ -1068,6 +1152,11 @@ function renderSalesReportTable(sales) {
         `;
     });
     $tbody.html(html);
+}
+
+function renderSalesReportTable(sales) {
+    currentSalesList = sales || [];
+    filterAndRenderSalesTable();
 }
 
 function loadReportData() {
@@ -1371,11 +1460,45 @@ if (billToOpen) {
     openPurchaseDetail(billToOpen);
 }
 
+function clearGlobalSearch() {
+    $('#inputSearch').val('');
+    $('#clearSearchBtn').hide();
+    loadReportData();
+}
+
+let searchDebounceTimer = null;
+
 // Initialise when DOM ready
 document.addEventListener('DOMContentLoaded', () => {
     $('#reportFilterForm').on('submit', function(e) {
         e.preventDefault();
+        if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
         loadReportData();
+    });
+
+    $('#inputSearch').on('input', function() {
+        const val = $(this).val();
+        $('#clearSearchBtn').toggle(val.length > 0);
+        clearTimeout(searchDebounceTimer);
+        searchDebounceTimer = setTimeout(() => {
+            loadReportData();
+        }, 400);
+    });
+
+    $('#salesTabSearchInput').on('input', function() {
+        filterAndRenderSalesTable();
+    });
+    $('#clearSalesTabSearchBtn').on('click', function() {
+        $('#salesTabSearchInput').val('');
+        filterAndRenderSalesTable();
+    });
+
+    $('#purchasesTabSearchInput').on('input', function() {
+        filterAndRenderPurchasesTable();
+    });
+    $('#clearPurchasesTabSearchBtn').on('click', function() {
+        $('#purchasesTabSearchInput').val('');
+        filterAndRenderPurchasesTable();
     });
 
     loadReportData();

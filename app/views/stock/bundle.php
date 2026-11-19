@@ -116,9 +116,42 @@
     </form>
 </div>
 
+<!-- Section ค้นหาชื่อเรื่องชุดขาย (Filter ทั้ง รวมชุดสำเร็จรูปเข้าเป็นกลุ่มขายเดียว และ ชุดที่พร้อมขาย) -->
+<div class="card p-3 p-md-4 mb-4 border-0 shadow-sm" id="bundleSearchCard" style="background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); border-left: 4px solid var(--color-primary) !important;">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+        <div class="panel-title mb-0 d-flex align-items-center gap-2">
+            <i class="bi bi-search text-primary"></i>
+            <span>ค้นหาชื่อเรื่องชุดขาย</span>
+        </div>
+        <span class="text-muted small" id="bundleSearchSummary">กำลังโหลด...</span>
+    </div>
+    <div class="row g-2 align-items-center">
+        <div class="col-12 col-md-7 col-lg-6">
+            <div class="input-group">
+                <span class="input-group-text bg-white border-end-0 text-muted">
+                    <i class="bi bi-journal-bookmark"></i>
+                </span>
+                <input type="text" id="bundleSearchInput" class="form-control border-start-0 ps-0"
+                       placeholder="พิมพ์ชื่อเรื่องมังงะ เพื่อค้นหากลุ่มหรือชุดขาย..." autocomplete="off">
+                <button class="btn btn-outline-secondary border-start-0" type="button" id="clearBundleSearchBtn" style="display: none;" title="ล้างการค้นหา">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+        </div>
+        <div class="col-12 col-md-5 col-lg-6">
+            <div class="small text-muted">
+                <i class="bi bi-funnel me-1 text-primary"></i>กรองแสดงเฉพาะกลุ่มขายรวมและชุดสำเร็จรูปที่มีชื่อเรื่องนั้น
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="card p-4 mb-4" id="combineCard" style="display:none;">
     <div class="d-flex justify-content-between align-items-center mb-2">
-        <div class="panel-title mb-0"><i class="bi bi-link-45deg"></i> รวมชุดสำเร็จรูปเข้าเป็นกลุ่มขายเดียว</div>
+        <div class="panel-title mb-0">
+            <i class="bi bi-link-45deg"></i> รวมชุดสำเร็จรูปเข้าเป็นกลุ่มขายเดียว
+            <span class="badge bg-secondary-subtle text-secondary rounded-pill ms-1" id="combineCountBadge">0</span>
+        </div>
     </div>
     <form method="POST" action="<?= url('stock/bundle') ?>" id="combineForm" enctype="multipart/form-data">
         <input type="hidden" name="action" value="combine">
@@ -154,7 +187,10 @@
 
 <div class="card p-4">
     <div class="panel-title d-flex justify-content-between align-items-center">
-        <span><i class="bi bi-bookshelf"></i> ชุดที่พร้อมขาย</span>
+        <div>
+            <i class="bi bi-bookshelf"></i> ชุดที่พร้อมขาย
+            <span class="badge bg-primary-subtle text-primary rounded-pill ms-1" id="availableCountBadge">0</span>
+        </div>
         <button type="button" class="btn btn-sm btn-outline-secondary" id="btnRefreshBundles"><i class="bi bi-arrow-clockwise"></i> รีเฟรช</button>
     </div>
     <div class="table-responsive">
@@ -552,7 +588,11 @@ document.addEventListener('change', (e) => {
     }
 });
 function updateCombineBtn() {
+    const totalVisible = document.querySelectorAll('.bundle-check').length;
     const n = document.querySelectorAll('.bundle-check:checked').length;
+    if (checkAll) {
+        checkAll.checked = totalVisible > 0 && n === totalVisible;
+    }
     if (combineBtn) combineBtn.disabled = n < 2;
 }
 
@@ -603,15 +643,70 @@ document.addEventListener('click', async (e) => {
 });
 
 /* =================== AJAX Data Loading & Dynamic Rendering =================== */
-function renderCombineTable(bundles) {
+let allBundles = [];
+let allBundleGroups = [];
+
+function groupMatchesTitle(g, q) {
+    if (!q) return true;
+    const summary = (g.titles_summary || '').toLowerCase();
+    const only = (g.titles_only || '').toLowerCase();
+    const label = (g.label || '').toLowerCase();
+    const id = '#' + g.id;
+    const bills = (g.purchase_bills || '').toLowerCase();
+    return summary.includes(q) || only.includes(q) || label.includes(q) || id.includes(q) || bills.includes(q);
+}
+
+function bundleMatchesTitle(b, q) {
+    if (!q) return true;
+    const title = (b.title || '').toLowerCase();
+    const id = '#' + b.id;
+    const bills = (b.purchase_bills || '').toLowerCase();
+    return title.includes(q) || id.includes(q) || bills.includes(q);
+}
+
+function applyBundleFilter() {
+    const q = ($('#bundleSearchInput').val() || '').trim().toLowerCase();
+    $('#clearBundleSearchBtn').toggle(q.length > 0);
+
+    const filteredCombine = allBundles.filter(b => bundleMatchesTitle(b, q));
+    const filteredAvailableBundles = allBundles.filter(b => bundleMatchesTitle(b, q));
+    const filteredAvailableGroups = allBundleGroups.filter(g => groupMatchesTitle(g, q));
+
+    const totalFound = filteredAvailableGroups.length + filteredAvailableBundles.length;
+    const totalAll = allBundleGroups.length + allBundles.length;
+
+    if (q) {
+        $('#bundleSearchSummary').html(`พบ <strong>${totalFound}</strong> จาก ${totalAll} ชุด/กลุ่ม`);
+    } else {
+        $('#bundleSearchSummary').html(`ทั้งหมด <strong>${totalAll}</strong> รายการ (${allBundleGroups.length} กลุ่มรวม, ${allBundles.length} ชุดเดี่ยว)`);
+    }
+
+    $('#combineCountBadge').text(filteredCombine.length);
+    $('#availableCountBadge').text(totalFound);
+
+    renderCombineTable(filteredCombine, q);
+    renderAvailableTable(filteredAvailableBundles, filteredAvailableGroups, q);
+}
+
+function renderCombineTable(bundles, q = '') {
     const $tbody = $('#combineBundlesTbody');
     const combineCard = document.getElementById('combineCard');
-    if (!bundles || bundles.length === 0) {
+
+    // Remember checked IDs before re-rendering
+    const checkedIds = new Set(Array.from(document.querySelectorAll('.bundle-check:checked')).map(cb => cb.value));
+
+    if (!allBundles || allBundles.length === 0) {
         if (combineCard) combineCard.style.display = 'none';
         $tbody.empty();
         return;
     }
     if (combineCard) combineCard.style.display = '';
+
+    if (!bundles || bundles.length === 0) {
+        $tbody.html(`<tr><td colspan="8" class="text-center text-muted py-3"><i class="bi bi-search me-1"></i>ไม่พบชุดสำเร็จรูปที่ตรงกับคำค้นหา &ldquo;${escapeHtml(q)}&rdquo;</td></tr>`);
+        updateCombineBtn();
+        return;
+    }
 
     let html = '';
     bundles.forEach(b => {
@@ -638,12 +733,14 @@ function renderCombineTable(bundles) {
             ? `<img src="${BASE_URL}/${escapeAttr(b.cover_image)}" alt="cover" class="thumb-xs">` 
             : '<span class="text-muted small">ไม่มีรูป</span>';
 
+        const isChecked = checkedIds.has(String(b.id)) ? 'checked' : '';
+
         html += `
             <tr>
-                <td data-label="เลือก"><input type="checkbox" class="bundle-check" name="bundle_ids[]" value="${escapeAttr(b.id)}"></td>
-                <td data-label="#">${escapeHtml(b.id)}</td>
+                <td data-label="เลือก"><input type="checkbox" class="bundle-check" name="bundle_ids[]" value="${escapeAttr(b.id)}" ${isChecked}></td>
+                <td data-label="#">#${escapeHtml(b.id)}</td>
                 <td data-label="รูป">${coverHtml}</td>
-                <td data-label="เรื่อง">${escapeHtml(b.title)}</td>
+                <td data-label="เรื่อง" class="fw-semibold text-dark">${escapeHtml(b.title)}</td>
                 <td data-label="ช่วงเล่ม"><span class="badge bg-info text-dark">เล่ม ${escapeHtml(b.volume_start)} - ${escapeHtml(b.volume_end)}</span></td>
                 <td data-label="บิลซื้อเข้า">${billsHtml}</td>
                 <td data-label="จำนวนเล่ม">${Number(b.book_count).toLocaleString()}</td>
@@ -655,10 +752,16 @@ function renderCombineTable(bundles) {
     updateCombineBtn();
 }
 
-function renderAvailableTable(bundles, bundleGroups) {
+function renderAvailableTable(bundles, bundleGroups, q = '') {
     const $tbody = $('#availableBundlesTbody');
-    if ((!bundles || bundles.length === 0) && (!bundleGroups || bundleGroups.length === 0)) {
+    const totalAll = (allBundles ? allBundles.length : 0) + (allBundleGroups ? allBundleGroups.length : 0);
+    if (totalAll === 0) {
         $tbody.html('<tr><td colspan="10" class="text-center text-muted py-4">ยังไม่มีชุดที่จัดไว้</td></tr>');
+        return;
+    }
+
+    if ((!bundles || bundles.length === 0) && (!bundleGroups || bundleGroups.length === 0)) {
+        $tbody.html(`<tr><td colspan="10" class="text-center text-muted py-4"><i class="bi bi-search me-1"></i>ไม่พบชุดหรือกลุ่มขายที่ตรงกับคำค้นหา &ldquo;${escapeHtml(q)}&rdquo;</td></tr>`);
         return;
     }
 
@@ -786,8 +889,9 @@ function loadBundleData() {
     $.getJSON(`${BASE_URL}/stock/bundleData`, function(res) {
         if (!res.success) return;
         TITLES = res.titles || [];
-        renderCombineTable(res.bundles || []);
-        renderAvailableTable(res.bundles || [], res.bundleGroups || []);
+        allBundles = res.bundles || [];
+        allBundleGroups = res.bundleGroups || [];
+        applyBundleFilter();
     }).fail(function() {
         $('#combineBundlesTbody').html('<tr><td colspan="8" class="text-center text-danger py-3">โหลดข้อมูลไม่สำเร็จ</td></tr>');
         $('#availableBundlesTbody').html('<tr><td colspan="10" class="text-center text-danger py-4">โหลดข้อมูลไม่สำเร็จ</td></tr>');
@@ -1023,6 +1127,14 @@ document.addEventListener('click', async (e) => {
 addItemBtn.addEventListener('click', addRow);
 addRow(); // start with 1 row
 loadBundleData(); // fetch bundles and titles asynchronously
+
+// ค้นหาชื่อเรื่อง (Filter ทั้ง รวมกลุ่ม และ ชุดที่พร้อมขาย)
+$('#bundleSearchInput').on('input', applyBundleFilter);
+$('#clearBundleSearchBtn').on('click', function() {
+    $('#bundleSearchInput').val('');
+    applyBundleFilter();
+    $('#bundleSearchInput').focus();
+});
 
 const btnRefreshBundles = document.getElementById('btnRefreshBundles');
 if (btnRefreshBundles) {
